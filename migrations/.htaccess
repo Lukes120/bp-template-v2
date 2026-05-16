@@ -1,0 +1,3 @@
+# Blocca accesso HTTP agli script di migrazione DB
+# Apache 2.4+
+Require all denied

@@ -1,0 +1,5 @@
+# Safety net root: blocca per estensione i file che NON dovrebbero essere serviti
+# Apache 2.4+
+<FilesMatch "\.(env|env\.template|db|db-shm|db-wal|bak|log|sqlite|sqlite3)$|^composer\.(json|lock)$|^\.gitignore$">
+    Require all denied
+</FilesMatch>

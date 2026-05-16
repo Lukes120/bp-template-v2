@@ -1,0 +1,233 @@
+<?php
+/**
+ * Generazione PDF (singola offerta + archivio).
+ * Usa Dompdf, condiviso tra api/genera_pdf.php, api/archivio_pdf.php, api/allega_odoo.php.
+ */
+
+require_once __DIR__ . '/calcoli.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+function bp_logo_b64(): string {
+    $env = getenv('LOGO_PATH') ?: '';
+    $candidates = array_filter([$env, __DIR__ . '/../logo.png', '/var/www/html/bp-template/logo.png']);
+    foreach ($candidates as $p) {
+        if ($p && is_readable($p)) return base64_encode(file_get_contents($p));
+    }
+    return '';
+}
+
+function bp_pdf_offerta(array $form, string $utente): string {
+    $c = bp_calc_all($form);
+    $logoB64 = bp_logo_b64();
+    $logoTag = $logoB64 ? '<img src="data:image/png;base64,' . $logoB64 . '" style="max-width:160px;max-height:50px">' : '';
+
+    $h  = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>';
+    $h .= 'body{font-family:Arial,sans-serif;font-size:10px;margin:0;color:#222}';
+    $h .= 'h3{color:#1d4ed8;font-size:10px;margin:8px 0 3px;border-bottom:1px solid #1d4ed8;padding-bottom:2px}';
+    $h .= 'table{border-collapse:collapse;width:100%;margin-bottom:6px}';
+    $h .= 'th{background:#1d4ed8;color:white;padding:3px 5px;font-size:9px;text-align:left}';
+    $h .= 'td{border:1px solid #ddd;padding:2px 5px;font-size:9px}';
+    $h .= '.r{text-align:right}.b{font-weight:bold}.blue{color:#1d4ed8;font-weight:bold}.green{color:#15803d}';
+    $h .= '.tot td{background:#eff6ff;font-weight:bold}.grand td{background:#1d4ed8;color:white;font-weight:bold}';
+    $h .= '.footer{margin-top:10px;font-size:8px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:4px}';
+    $h .= '</style></head><body>';
+
+    $h .= '<table style="border:none;margin-bottom:10px"><tr>';
+    $h .= '<td style="border:none;width:160px;vertical-align:middle">' . $logoTag . '</td>';
+    $h .= '<td style="border:none;vertical-align:top;padding-left:15px">';
+    $h .= '<div style="font-size:13px;font-weight:bold;color:#1e3a8a;margin-bottom:4px">Valutazione Commessa</div>';
+    $h .= '<table style="width:auto;margin:0"><tbody>';
+    $h .= '<tr><td style="border:none;color:#6b7280;padding:1px 6px 1px 0">Commessa:</td><td style="border:none;font-weight:bold">' . htmlspecialchars($form['nome'] ?? '') . '</td></tr>';
+    $h .= '<tr><td style="border:none;color:#6b7280;padding:1px 6px 1px 0">Cliente:</td><td style="border:none">' . htmlspecialchars($form['cliente'] ?? '') . '</td></tr>';
+    $h .= '<tr><td style="border:none;color:#6b7280;padding:1px 6px 1px 0">Tipo:</td><td style="border:none">' . htmlspecialchars($form['tipo'] ?? '') . '</td></tr>';
+    $h .= '<tr><td style="border:none;color:#6b7280;padding:1px 6px 1px 0">Data:</td><td style="border:none">' . htmlspecialchars($form['data'] ?? '') . '</td></tr>';
+    if (!empty($form['nOrdineOdoo'])) {
+        $h .= '<tr><td style="border:none;color:#7c3aed;padding:1px 6px 1px 0">N. Odoo:</td><td style="border:none;color:#7c3aed;font-weight:bold">' . htmlspecialchars($form['nOrdineOdoo']) . '</td></tr>';
+    }
+    $h .= '</tbody></table></td></tr></table>';
+
+    $sezioni = [
+        ['titolo' => 'Manodopera',          'rows' => $c['cp'],  'tC' => $c['tCP'],  'tV' => $c['tVP'],  'cols' => ['Categoria','h/uomo','Costo/h'],          'fields' => ['categoria','oreG','costoH']],
+        ['titolo' => 'Materiali',           'rows' => $c['cm'],  'tC' => $c['tCM'],  'tV' => $c['tVM'],  'cols' => ['Descrizione','Qta','Costo Unit.'],       'fields' => ['desc','qta','costoU']],
+        ['titolo' => 'Servizi e Subappalti','rows' => $c['cs'],  'tC' => $c['tCS'],  'tV' => $c['tVS'],  'cols' => ['Descrizione','Qta','Costo Unit.'],       'fields' => ['desc','qta','costoU']],
+        ['titolo' => 'Manutenzione',        'rows' => $c['cm2'], 'tC' => $c['tCM2'], 'tV' => $c['tVM2'], 'cols' => ['Descrizione','Qta','Costo/Un'],          'fields' => ['desc','qta','costoU']],
+    ];
+    foreach ($sezioni as $s) {
+        if (empty($s['rows'])) continue;
+        $h .= '<h3>' . $s['titolo'] . '</h3><table><thead><tr>';
+        foreach ($s['cols'] as $col) $h .= '<th>' . $col . '</th>';
+        $h .= '<th>Costo Tot.</th><th>Markup</th><th>Prezzo Vendita</th><th>Margine</th></tr></thead><tbody>';
+        foreach ($s['rows'] as $r) {
+            $h .= '<tr>';
+            foreach ($s['fields'] as $i => $f) {
+                $val = $r[$f] ?? '';
+                $cls = $i === 0 ? '' : 'r';
+                $h .= '<td' . ($cls ? ' class="' . $cls . '"' : '') . '>' . htmlspecialchars((string)$val) . '</td>';
+            }
+            $h .= '<td class="r">' . bp_fmt($r['b']) . '</td>';
+            $h .= '<td class="r">' . htmlspecialchars((string)($r['markup'] ?? '0')) . '%</td>';
+            $h .= '<td class="r blue">' . bp_fmt($r['pv']) . '</td>';
+            $h .= '<td class="r green">' . bp_fmt($r['pv'] - $r['b']) . '</td>';
+            $h .= '</tr>';
+        }
+        $h .= '<tr class="tot"><td colspan="3" class="b">TOTALE</td>';
+        $h .= '<td class="r">' . bp_fmt($s['tC']) . '</td><td></td>';
+        $h .= '<td class="r blue">' . bp_fmt($s['tV']) . '</td>';
+        $h .= '<td class="r green">' . bp_fmt($s['tV'] - $s['tC']) . '</td></tr></tbody></table>';
+    }
+
+    if (!empty($c['ct'])) {
+        $h .= '<h3>Trasferte</h3><table><thead><tr><th>Descrizione</th><th>Persone</th><th>Giorni</th><th>Costo/g</th><th>Vitto</th><th>Alloggio</th><th>Km</th><th>E/km</th><th>Costo Tot.</th><th>Markup</th><th>Prezzo Vendita</th><th>Margine</th></tr></thead><tbody>';
+        foreach ($c['ct'] as $r) {
+            $h .= '<tr>';
+            foreach (['desc','persone','giorni','costoGiorno','vitto','alloggio','km','costoKm'] as $i => $f) {
+                $cls = $i === 0 ? '' : 'r';
+                $h .= '<td' . ($cls ? ' class="' . $cls . '"' : '') . '>' . htmlspecialchars((string)($r[$f] ?? '')) . '</td>';
+            }
+            $h .= '<td class="r">' . bp_fmt($r['b']) . '</td>';
+            $h .= '<td class="r">' . htmlspecialchars((string)($r['markup'] ?? '0')) . '%</td>';
+            $h .= '<td class="r blue">' . bp_fmt($r['pv']) . '</td>';
+            $h .= '<td class="r green">' . bp_fmt($r['pv'] - $r['b']) . '</td></tr>';
+        }
+        $h .= '<tr class="tot"><td colspan="8" class="b">TOTALE</td>';
+        $h .= '<td class="r">' . bp_fmt($c['tCT']) . '</td><td></td>';
+        $h .= '<td class="r blue">' . bp_fmt($c['tVT']) . '</td>';
+        $h .= '<td class="r green">' . bp_fmt($c['tVT'] - $c['tCT']) . '</td></tr></tbody></table>';
+    }
+
+    $h .= '<h3>Riepilogo</h3><table style="font-size:11px"><thead><tr><th>Voce</th><th>Costo</th><th>Prezzo Vendita</th><th>Margine</th><th>Margine %</th></tr></thead><tbody>';
+    $voci = [
+        ['Manodopera',   $c['tCP'],  $c['tVP']],
+        ['Materiali',    $c['tCM'],  $c['tVM']],
+        ['Servizi',      $c['tCS'],  $c['tVS']],
+        ['Manutenzione', $c['tCM2'], $c['tVM2']],
+        ['Trasferte',    $c['tCT'],  $c['tVT']],
+    ];
+    foreach ($voci as [$l, $co, $v]) {
+        $h .= '<tr><td class="b">' . $l . '</td><td class="r">' . bp_fmt($co) . '</td>';
+        $h .= '<td class="r blue">' . bp_fmt($v) . '</td>';
+        $h .= '<td class="r green">' . bp_fmt($v - $co) . '</td>';
+        $h .= '<td class="r">' . bp_fmt_pct($v > 0 ? ($v - $co) / $v * 100 : 0) . '%</td></tr>';
+    }
+    $h .= '<tr><td class="b">Spese Generali (' . htmlspecialchars((string)($form['speseGenerali'] ?? '5')) . '%)</td><td class="r">--</td><td class="r" style="color:#ea580c;font-weight:bold">' . bp_fmt($c['sg']) . '</td><td colspan="2"></td></tr>';
+
+    $scontoE = $c['scontoE'] ?? 0;
+    $scontoLabel = $scontoE > 0
+        ? (($form['scontoTipo'] ?? 'pct') === 'pct'
+            ? bp_fmt($form['scontoValore'] ?? 0) . '%'
+            : 'EUR ' . bp_fmt($form['scontoValore'] ?? 0))
+        : '';
+    $h .= '<tr style="background:#fee2e2"><td class="b" style="color:#dc2626">Sconto Direzione' . ($scontoLabel ? ' (' . $scontoLabel . ')' : '') . '</td><td class="r">--</td><td class="r" style="color:#dc2626;font-weight:bold">' . ($scontoE > 0 ? '- ' . bp_fmt($scontoE) : '0,00') . '</td><td colspan="2"></td></tr>';
+    $h .= '<tr class="grand" style="font-size:13px"><td>TOTALE COMMESSA</td><td class="r">' . bp_fmt($c['tC']) . '</td><td class="r">' . bp_fmt($c['tFSconto']) . '</td><td class="r">' . bp_fmt($c['mE']) . '</td><td class="r">' . bp_fmt_pct($c['mP']) . '%</td></tr>';
+    $h .= '</tbody></table>';
+
+    if (!empty($form['note'])) {
+        $h .= '<p style="margin-top:6px"><b>Note:</b> ' . htmlspecialchars($form['note']) . '</p>';
+    }
+    $h .= '<div class="footer">Elaborato da: <b>' . htmlspecialchars($utente) . '</b> &nbsp;|&nbsp; ' . date('d/m/Y') . '</div>';
+    $h .= '</body></html>';
+
+    $options = new Options();
+    $options->set('isHtml5ParserEnabled', true);
+    $options->set('isRemoteEnabled', false);
+    $dompdf = new Dompdf($options);
+    $dompdf->loadHtml($h);
+    $dompdf->setPaper('A4', 'landscape');
+    $dompdf->render();
+    return $dompdf->output();
+}
+
+function bp_pdf_archivio(array $lista): string {
+    $logoB64 = bp_logo_b64();
+    $logoTag = $logoB64 ? '<img src="data:image/png;base64,' . $logoB64 . '" style="max-height:45px;max-width:160px">' : '';
+
+    $showUtente = false;
+    foreach ($lista as $r) { if (!empty($r['utente'])) { $showUtente = true; break; } }
+
+    $totRicavi = 0; $totCosti = 0; $totMargineE = 0; $rows = '';
+    foreach ($lista as $idx => $o) {
+        $ricavi = (float)($o['tF'] ?? 0);
+        $costi  = (float)($o['tC'] ?? 0);
+        $margE  = (float)($o['mE'] ?? 0);
+        $margP  = round((float)($o['mP'] ?? 0), 1);
+        $totRicavi += $ricavi; $totCosti += $costi; $totMargineE += $margE;
+        $bg = $idx % 2 === 0 ? '#ffffff' : '#eef4fb';
+        $mColor = $margP >= 15 ? '#15803d' : ($margP >= 5 ? '#ca8a04' : '#dc2626');
+        $data = $o['data'] ?? '';
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $data, $m)) $data = $m[3] . '/' . $m[2] . '/' . $m[1];
+        $rows .= '<tr style="background:' . $bg . '">'
+              . '<td class="left bold">' . htmlspecialchars($o['nome'] ?? '') . '</td>'
+              . '<td class="left">' . htmlspecialchars($o['cliente'] ?? '') . '</td>'
+              . '<td class="center">' . htmlspecialchars($data) . '</td>'
+              . '<td class="center" style="color:#7c3aed;font-weight:bold">' . htmlspecialchars($o['nOrdineOdoo'] ?? '') . '</td>'
+              . ($showUtente ? '<td class="center">' . htmlspecialchars($o['utente'] ?? '') . '</td>' : '')
+              . '<td class="right blue bold">' . bp_fmt($ricavi) . '</td>'
+              . '<td class="right">' . bp_fmt($costi) . '</td>'
+              . '<td class="right green bold">' . bp_fmt($margE) . '</td>'
+              . '<td class="right bold" style="color:' . $mColor . '">' . bp_fmt_pct($margP) . '%</td>'
+              . '</tr>';
+    }
+    $totMargineP = $totRicavi > 0 ? round(($totMargineE / $totRicavi) * 100, 1) : 0;
+    $totColspan  = $showUtente ? 5 : 4;
+    $totRow = '<tr class="tot-row">'
+            . '<td colspan="' . $totColspan . '" class="left">TOTALI (' . count($lista) . ' offerte)</td>'
+            . '<td class="right">' . bp_fmt($totRicavi) . '</td>'
+            . '<td class="right">' . bp_fmt($totCosti) . '</td>'
+            . '<td class="right">' . bp_fmt($totMargineE) . '</td>'
+            . '<td class="right">' . bp_fmt_pct($totMargineP) . '%</td>'
+            . '</tr>';
+
+    $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 10px; color: #1f2937; margin: 24px; }
+.header-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+.header-table td { border: none; vertical-align: middle; }
+.header-table .logo-cell { width: 180px; }
+.header-table .title-cell { padding-left: 18px; border-left: 4px solid #2e6da4; }
+.doc-title { font-size: 16px; font-weight: bold; color: #1a3e5c; margin-bottom: 3px; }
+.doc-sub { font-size: 9px; color: #6b7280; }
+table.main { width: 100%; border-collapse: collapse; margin-top: 4px; }
+table.main th { background: #1a3e5c; color: white; padding: 7px 8px; font-size: 11px; font-weight: bold; border: 1px solid #15324d; }
+table.main td { padding: 6px 8px; font-size: 9px; border: 1px solid #d1d5db; }
+.left { text-align: left; } .right { text-align: right; } .center { text-align: center; }
+.bold { font-weight: bold; } .blue { color: #1d4ed8; } .green { color: #15803d; }
+.tot-row td { background: #1a3e5c !important; color: white !important; font-weight: bold; font-size: 10px; padding: 8px; border: 1px solid #15324d; }
+.footer { margin-top: 18px; font-size: 8px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 6px; text-align: center; }
+</style></head><body>
+<table class="header-table"><tr>
+  <td class="logo-cell">' . $logoTag . '</td>
+  <td class="title-cell">
+    <div class="doc-title">Archivio Offerte</div>
+    <div class="doc-sub">Estratto il ' . date('d/m/Y H:i') . ' &nbsp;&nbsp;|&nbsp;&nbsp; ' . count($lista) . ' offerte</div>
+  </td>
+</tr></table>
+<table class="main">
+  <thead><tr>
+    <th class="left">Commessa</th>
+    <th class="left">Cliente</th>
+    <th class="center">Data</th>
+    <th class="center" style="color:#c4b5fd">N. Odoo</th>
+    ' . ($showUtente ? '<th class="center">Utente</th>' : '') . '
+    <th class="right">Ricavi €</th>
+    <th class="right">Costi €</th>
+    <th class="right">Margine €</th>
+    <th class="right">Margine %</th>
+  </tr></thead>
+  <tbody>' . $rows . '</tbody>
+  <tfoot>' . $totRow . '</tfoot>
+</table>
+<div class="footer">BP Template &nbsp;|&nbsp; Ecotel Italia &nbsp;|&nbsp; Documento generato automaticamente</div>
+</body></html>';
+
+    $options = new Options();
+    $options->set('isRemoteEnabled', false);
+    $options->set('defaultPaperSize', 'A4');
+    $options->set('defaultPaperOrientation', 'landscape');
+    $dompdf = new Dompdf($options);
+    $dompdf->loadHtml($html);
+    $dompdf->render();
+    return $dompdf->output();
+}

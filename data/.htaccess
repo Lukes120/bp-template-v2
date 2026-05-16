@@ -1,0 +1,3 @@
+# Blocca accesso HTTP al DB SQLite e ai backup
+# Apache 2.4+
+Require all denied

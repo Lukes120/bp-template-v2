@@ -1,0 +1,3 @@
+# Blocca accesso HTTP a credentials.env e altri file sensibili in config/
+# Apache 2.4+
+Require all denied

@@ -1,0 +1,10 @@
+vendor/
+data/*.db
+data/*.db-journal
+config/credentials.env
+*.log
+deploy.log
+.DS_Store
+
+# Backup zip locali
+*.zip

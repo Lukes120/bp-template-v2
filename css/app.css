@@ -1,0 +1,1193 @@
+/* ============================================================
+   BP Template — UI in stile Odoo 14 Enterprise
+   Palette: viola Odoo (#714B67), grigi neutri, accenti teal/red
+   ============================================================ */
+
+:root{
+  --o-primary:#714B67;
+  --o-primary-dark:#5b3950;
+  --o-primary-light:#a47ca1;
+  --o-purple-bg:#5b3950;        /* top bar più scura come Odoo reale */
+  --o-action:#00a09d;            /* verde teal Odoo Enterprise */
+  --o-action-dark:#017e84;
+  --o-success:#28a745;
+  --o-warning:#f0ad4e;
+  --o-danger:#dc3545;
+  --o-info:#17a2b8;
+  --o-bg:#f0eeee;
+  --o-surface:#ffffff;
+  --o-border:#dee2e6;
+  --o-border-light:#e9ecef;
+  --o-text:#212529;
+  --o-text-muted:#6c757d;
+  --o-label:#6c757d;             /* grigio per label uppercase — leggibile ma discreto */
+  --o-hover:#fcfcfc;
+  --o-row-hover:#f7f7f7;
+  --o-shadow-sm:0 1px 2px rgba(0,0,0,.04);
+  --o-shadow:0 2px 4px rgba(0,0,0,.06);
+  --o-shadow-lg:0 4px 16px rgba(0,0,0,.10);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Lato',-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+  background:var(--o-bg);
+  color:var(--o-text);
+  font-size:13px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+button{font-family:inherit}
+a{color:var(--o-primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ============== APP NAVBAR (top bar viola) ============== */
+
+.topnav{
+  background:var(--o-purple-bg);
+  height:54px;
+  display:flex;
+  align-items:center;
+  padding:0 8px 0 0;
+  color:white;
+  box-shadow:var(--o-shadow);
+  position:sticky;top:0;z-index:100;
+}
+.topnav-logo{
+  display:flex;align-items:center;gap:10px;
+  padding:0 18px;height:100%;
+  background:rgba(0,0,0,.12);
+  cursor:pointer;
+  border:none;
+  transition:background .15s;
+}
+.topnav-logo:hover{background:rgba(0,0,0,.22)}
+.topnav-logo-img{
+  height:30px;width:auto;
+  background:white;border-radius:4px;
+  padding:3px 7px;
+  box-shadow:0 1px 2px rgba(0,0,0,.15);
+}
+.topnav-logo-text{font-size:1rem;font-weight:600;color:white;letter-spacing:.02em}
+.topnav-apps-icon{font-size:1.15rem;color:white;opacity:.85}
+
+.topnav-links{display:flex;flex:1;height:100%;align-items:center;gap:0;margin-left:0}
+.topnav-link{
+  font-size:.92rem;font-weight:500;color:rgba(255,255,255,.75);
+  padding:0 18px;height:100%;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+  border:none;background:none;
+  border-bottom:3px solid transparent;
+  transition:all .15s;
+  position:relative;
+}
+.topnav-link:hover{color:white;background:rgba(0,0,0,.14)}
+.topnav-link.active{
+  color:white;
+  background:rgba(255,255,255,.10);
+  border-bottom-color:#fbbf24;
+  font-weight:600;
+}
+.topnav-link i{font-size:.95rem;opacity:.95}
+.topnav-link.active i{opacity:1}
+.topnav-link-badge{
+  background:#dc3545;color:white;
+  font-size:.65rem;font-weight:700;
+  padding:1px 7px;border-radius:10px;
+  margin-left:4px;
+  box-shadow:0 0 0 2px rgba(255,255,255,.20);
+}
+
+.topnav-right{display:flex;align-items:center;gap:6px;margin-left:auto;padding-right:6px;height:100%}
+.topnav-btn{
+  font-size:.82rem;font-weight:400;color:rgba(255,255,255,.9);
+  padding:6px 12px;border-radius:3px;border:none;cursor:pointer;
+  background:transparent;transition:all .12s;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.topnav-btn:hover{background:rgba(255,255,255,.15);color:white}
+.btn-tnav-new{background:rgba(255,255,255,.15)}
+.btn-tnav-new:hover{background:rgba(255,255,255,.25)}
+.btn-tnav-logout{color:rgba(255,255,255,.9)}
+.btn-tnav-logout:hover{background:rgba(220,53,69,.7)}
+.btn-tnav-user{color:rgba(255,255,255,.9)}
+
+.topnav-user{
+  display:flex;align-items:center;gap:8px;
+  padding:0 12px;height:100%;cursor:pointer;
+  transition:background .12s;
+}
+.topnav-user:hover{background:rgba(0,0,0,.10)}
+.topnav-avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(255,255,255,.20);
+  color:white;font-size:.75rem;font-weight:500;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.3);
+}
+.topnav-username{font-size:.82rem;color:white}
+.badge-tnav-admin{
+  font-size:.62rem;font-weight:500;
+  padding:1px 6px;border-radius:3px;
+  background:rgba(255,255,255,.20);color:white;
+  text-transform:lowercase;letter-spacing:.02em;
+}
+
+/* ============== CONTROL PANEL (sotto navbar) ============== */
+
+.o-control-panel{
+  background:var(--o-surface);
+  border-bottom:1px solid var(--o-border);
+  padding:6px 16px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  min-height:44px;
+}
+.o-cp-breadcrumb{display:flex;align-items:center;gap:6px;font-size:.95rem;font-weight:400;color:var(--o-text)}
+.o-cp-breadcrumb a{color:var(--o-action);font-weight:400;cursor:pointer;font-size:.85rem;text-decoration:none}
+.o-cp-breadcrumb a:hover{text-decoration:underline}
+.o-cp-breadcrumb .o-bc-sep{color:var(--o-text-muted);font-size:.75rem;margin:0 2px;font-weight:400}
+.o-cp-breadcrumb .o-bc-current{font-weight:500;color:var(--o-text)}
+.o-cp-actions{display:flex;align-items:center;gap:4px}
+.o-cp-spacer{flex:1}
+.o-cp-search{display:flex;align-items:center;gap:6px;margin-left:auto}
+.o-cp-search input{
+  border:1px solid var(--o-border);
+  border-radius:3px;padding:5px 10px;
+  font-size:.82rem;font-family:inherit;
+  min-width:240px;outline:none;
+  transition:border-color .12s;
+}
+.o-cp-search input:focus{border-color:var(--o-action)}
+
+/* Bottoni stile Odoo Enterprise: piatti, uppercase, padding generoso */
+.btn{
+  font-family:inherit;font-size:.78rem;font-weight:500;
+  padding:6px 14px;border-radius:3px;
+  border:1px solid transparent;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:all .12s;
+  line-height:1.5;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.btn:hover{opacity:.92}
+
+/* PRIMARIO = verde teal Odoo (CREA FATTURA, MODIFICA, SALVA) */
+.btn-primary,
+.btn-purple{
+  background:var(--o-action);color:white;border-color:var(--o-action);
+}
+.btn-primary:hover,
+.btn-purple:hover{background:var(--o-action-dark);border-color:var(--o-action-dark);opacity:1}
+
+/* SECONDARIO = link/testo trasparente con accento (CREA, ANNULLA) */
+.btn-secondary{
+  background:transparent;color:var(--o-action);border:1px solid transparent;
+}
+.btn-secondary:hover{background:rgba(0,160,157,.08);border-color:var(--o-action);opacity:1}
+
+/* SUCCESS = verde teal (alternativo) */
+.btn-success{background:var(--o-action);color:white;border-color:var(--o-action)}
+.btn-success:hover{background:var(--o-action-dark);border-color:var(--o-action-dark);opacity:1}
+
+/* DANGER = elimina/elimina righe (terracotta/rosso) */
+.btn-danger{background:#a94442;color:white;border-color:#a94442}
+.btn-danger:hover{background:#8a3736;border-color:#8a3736;opacity:1}
+
+.btn-warning{background:var(--o-warning);color:white;border-color:var(--o-warning)}
+
+.btn-link{background:none;color:var(--o-action);border:none;padding:5px 8px;text-transform:uppercase;letter-spacing:.04em;font-weight:500}
+.btn-link:hover{text-decoration:underline}
+.btn-sm{padding:3px 10px;font-size:.7rem}
+.btn-full{width:100%;justify-content:center}
+
+/* Bottoni export specifici (Excel/PDF/Odoo) — accentati e brandizzati */
+.btn-excel{
+  background:#1d6f42;color:white;border:1px solid #1d6f42;
+  font-weight:500;padding:7px 14px;
+  box-shadow:0 1px 2px rgba(29,111,66,.3);
+}
+.btn-excel:hover{background:#175a35;border-color:#175a35;opacity:1}
+.btn-pdf{
+  background:#c8102e;color:white;border:1px solid #c8102e;
+  font-weight:500;padding:7px 14px;
+  box-shadow:0 1px 2px rgba(200,16,46,.3);
+}
+.btn-pdf:hover{background:#a30d24;border-color:#a30d24;opacity:1}
+/* Bottone Allega a Odoo: massimamente prominente, distinto da tutto il resto */
+.btn-odoo{
+  background:linear-gradient(135deg,#8e5fa0 0%,#714B67 50%,#5b3950 100%);
+  color:white;border:1px solid #4a2e42;
+  font-weight:700;font-size:.82rem;
+  padding:9px 22px;border-radius:4px;
+  text-transform:uppercase;letter-spacing:.06em;
+  box-shadow:0 3px 10px rgba(113,75,103,.45), inset 0 1px 0 rgba(255,255,255,.18);
+  position:relative;overflow:hidden;
+  transition:all .18s ease;
+  animation:btn-odoo-glow 2.4s ease-in-out infinite;
+}
+.btn-odoo i{
+  font-size:1.05rem;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));
+}
+.btn-odoo:hover{
+  background:linear-gradient(135deg,#a47ca1 0%,#5b3950 50%,#3d2335 100%);
+  border-color:#3d2335;
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(113,75,103,.55), inset 0 1px 0 rgba(255,255,255,.22);
+  opacity:1;
+}
+.btn-odoo:active{transform:translateY(0);box-shadow:0 2px 6px rgba(113,75,103,.4)}
+
+@keyframes btn-odoo-glow{
+  0%,100%{box-shadow:0 3px 10px rgba(113,75,103,.45), inset 0 1px 0 rgba(255,255,255,.18)}
+  50%   {box-shadow:0 3px 16px rgba(113,75,103,.65), inset 0 1px 0 rgba(255,255,255,.22)}
+}
+
+.btn-excel i,.btn-pdf i{font-size:.95rem}
+
+/* Compatibilità classi vecchie */
+.btn-blue{background:var(--o-action);color:white;border:1px solid var(--o-action)}
+.btn-blue:hover{background:var(--o-action-dark)}
+.btn-green{background:var(--o-action);color:white;border:1px solid var(--o-action)}
+.btn-gray{background:transparent;color:var(--o-text);border:1px solid var(--o-border)}
+.btn-gray:hover{background:var(--o-hover)}
+.btn-red{background:transparent;color:var(--o-danger);border:1px solid #f5c2c2}
+.btn-red:hover{background:#fce4e4}
+.btn-orange{background:var(--o-warning);color:white;border:1px solid var(--o-warning)}
+.btn-white{background:white;color:var(--o-primary);border:1px solid var(--o-border)}
+
+/* ============== STATUSBAR — stile Odoo mini (in alto a destra) ============== */
+
+.o-statusbar-mini{
+  display:flex;align-items:center;gap:0;
+  font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;
+  margin-left:auto;
+}
+.o-statusbar-mini .o-status-pill{
+  background:transparent;color:#bbb;
+  padding:4px 12px;border:none;
+  font-weight:500;
+  white-space:nowrap;
+  position:relative;
+}
+.o-statusbar-mini .o-status-pill:not(:last-child)::after{
+  content:"›";color:#ddd;margin-left:8px;
+}
+.o-statusbar-mini .o-status-pill.active{
+  color:var(--o-action);font-weight:700;
+}
+.o-statusbar-mini .o-status-pill.done{color:#888}
+
+/* Versione grande ancora disponibile per casi speciali */
+.o-statusbar{
+  display:flex;align-items:center;
+  background:var(--o-surface);border-bottom:1px solid var(--o-border);
+  padding:8px 16px;gap:0;flex-wrap:wrap;
+}
+.o-statusbar:not(.o-statusbar-mini) .o-status-pill{
+  font-size:.78rem;font-weight:500;
+  padding:6px 14px;
+  background:transparent;color:var(--o-text-muted);
+  border:1px solid var(--o-border);
+  border-right:none;
+  white-space:nowrap;
+}
+.o-statusbar:not(.o-statusbar-mini) .o-status-pill:first-child{border-radius:3px 0 0 3px}
+.o-statusbar:not(.o-statusbar-mini) .o-status-pill:last-child{border-right:1px solid var(--o-border);border-radius:0 3px 3px 0}
+.o-statusbar:not(.o-statusbar-mini) .o-status-pill.active{
+  background:var(--o-action);color:white;border-color:var(--o-action);
+}
+.o-statusbar:not(.o-statusbar-mini) .o-status-pill.done{color:var(--o-text)}
+
+/* ============== SMART BUTTONS (barra orizzontale KPI sopra il form) ============== */
+
+.o-smart-buttons{
+  display:flex;flex-wrap:wrap;gap:0;
+  background:var(--o-surface);
+  border-bottom:1px solid var(--o-border);
+}
+.o-smart-btn{
+  padding:14px 22px;
+  display:flex;align-items:center;gap:10px;
+  border-right:1px solid var(--o-border-light);
+  cursor:pointer;background:none;border-top:none;border-bottom:none;border-left:none;
+  font-family:inherit;
+  transition:background .12s;
+  text-align:left;
+}
+.o-smart-btn:hover:not(:disabled){background:#f8f9fa}
+.o-smart-btn:disabled{cursor:default;opacity:1}
+.o-smart-btn-icon{
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  color:var(--o-text-muted);font-size:1.05rem;
+}
+.o-smart-btn-content{display:flex;flex-direction:column;gap:1px}
+.o-smart-btn-value{
+  font-size:1rem;font-weight:700;color:var(--o-text);
+  font-variant-numeric:tabular-nums;line-height:1.1;
+}
+.o-smart-btn-label{
+  font-size:.7rem;color:var(--o-text-muted);
+  text-transform:uppercase;letter-spacing:.04em;
+}
+
+/* ============== TITOLO FORM XXL (stile Odoo) ============== */
+
+.o-form-title{
+  font-size:2.2rem;font-weight:300;
+  color:var(--o-text);
+  letter-spacing:-.01em;line-height:1.1;
+  margin:0;
+}
+.o-form-subtitle{
+  font-size:.85rem;color:var(--o-text-muted);
+  margin-top:6px;
+}
+
+/* ============== MAIN CONTAINER ============== */
+
+.dash-main{padding:16px;max-width:100%}
+
+.kpi-bar{
+  background:var(--o-surface);
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-bottom:1px solid var(--o-border);
+  border-radius:0;
+  margin:0;
+}
+.kpi-item{
+  padding:14px 20px;
+  border-right:1px solid var(--o-border-light);
+  display:flex;flex-direction:column;gap:2px;
+  background:var(--o-surface);
+}
+.kpi-item:last-child{border-right:none}
+.kpi-label{
+  font-size:.7rem;font-weight:500;
+  color:var(--o-text-muted);
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.kpi-value{font-size:1.35rem;font-weight:500;color:var(--o-text);letter-spacing:-.01em}
+.kpi-value-green{color:var(--o-success)}
+.kpi-value-blue{color:var(--o-action)}
+.kpi-value-yellow{color:var(--o-warning)}
+.kpi-value-red{color:var(--o-danger)}
+.kpi-sub{font-size:.7rem;color:var(--o-text-muted)}
+
+/* ============== LIST VIEW (tabella stile Odoo) ============== */
+
+.dash-table-card{
+  background:var(--o-surface);
+  border:1px solid var(--o-border);
+  border-radius:3px;
+  box-shadow:var(--o-shadow-sm);
+  overflow:hidden;
+}
+.dash-table{width:100%;border-collapse:collapse;table-layout:auto}
+.dash-table thead tr{background:var(--o-bg);border-bottom:1px solid var(--o-border)}
+.dash-table th{
+  font-size:.72rem;font-weight:600;color:var(--o-text);
+  text-transform:none;letter-spacing:0;
+  padding:8px 10px;text-align:left;white-space:nowrap;
+}
+.dash-table th.r{text-align:right}
+.dash-table tbody tr{border-bottom:1px solid var(--o-border-light);transition:background .08s}
+.dash-table tbody tr:last-child{border-bottom:none}
+.dash-table tbody tr:hover{background:var(--o-row-hover)}
+.dash-table td{padding:7px 10px;font-size:.82rem;vertical-align:middle;color:var(--o-text)}
+/* Numeri sempre allineati e coerenti con il resto (Lato) */
+.dash-table td[style*="text-align:right"],
+.dash-table .dash-tot-row td{font-variant-numeric:tabular-nums}
+
+.dash-odoo-chip{
+  display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.74rem;font-weight:500;color:var(--o-primary);
+  background:rgba(113,75,103,.10);padding:1px 7px;border-radius:3px;
+}
+.dash-mp-green{
+  background:#d4edda;color:#155724;
+  font-variant-numeric:tabular-nums;font-size:.78rem;font-weight:600;
+  padding:1px 8px;border-radius:3px;display:inline-block;
+}
+.dash-mp-yellow{
+  background:#fff3cd;color:#856404;
+  font-variant-numeric:tabular-nums;font-size:.78rem;font-weight:600;
+  padding:1px 8px;border-radius:3px;display:inline-block;
+}
+.dash-mp-red{
+  background:#f8d7da;color:#721c24;
+  font-variant-numeric:tabular-nums;font-size:.78rem;font-weight:600;
+  padding:1px 8px;border-radius:3px;display:inline-block;
+}
+.dash-tot-row td{
+  background:#475569 !important;
+  padding:14px 12px;font-size:.95rem;font-weight:700;
+  color:#fff !important;
+  border-top:none;
+  font-variant-numeric:tabular-nums;
+}
+.dash-tot-row .tot-cell-label{
+  font-size:.74rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;
+  color:#cbd5e1 !important;
+}
+.dash-tot-row .tot-cell{text-align:right}
+.dash-tot-row .tot-cell-ricavi{color:#fff !important}
+.dash-tot-row .tot-cell-costi{color:#fca5a5 !important}
+.dash-tot-row .tot-cell-margine{color:#86efac !important}
+.dash-tot-row .tot-cell-mp .dash-mp-green,
+.dash-tot-row .tot-cell-mp .dash-mp-yellow,
+.dash-tot-row .tot-cell-mp .dash-mp-red{
+  font-size:.88rem;font-weight:700;padding:3px 10px;
+}
+
+/* Action buttons nelle righe della list — stile 3D moderno */
+.btn-dash-mod,.btn-dash-rie,.btn-dash-dup,.btn-dash-del{
+  font-size:.74rem;font-weight:600;
+  padding:6px 14px;
+  border-radius:5px;cursor:pointer;
+  margin-left:4px;
+  display:inline-flex;align-items:center;gap:5px;
+  border:1px solid transparent;
+  text-transform:uppercase;letter-spacing:.04em;
+  transition:all .18s ease;
+  position:relative;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.10),
+    inset 0 1px 0 rgba(255,255,255,.20);
+}
+.btn-dash-mod:hover,.btn-dash-rie:hover,.btn-dash-dup:hover,.btn-dash-del:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    0 4px 8px rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.25);
+}
+.btn-dash-mod:active,.btn-dash-rie:active,.btn-dash-dup:active,.btn-dash-del:active{
+  transform:translateY(0);
+  box-shadow:0 1px 2px rgba(0,0,0,.10);
+}
+
+/* Modifica → verde teal Odoo */
+.btn-dash-mod{
+  background:linear-gradient(180deg,#00b3a8 0%,var(--o-action) 60%,var(--o-action-dark) 100%);
+  color:white;border-color:var(--o-action-dark);
+}
+.btn-dash-mod:hover{
+  background:linear-gradient(180deg,#00c9bd 0%,#00a09d 60%,#005c66 100%);
+}
+
+/* Riepilogo → grigio chiaro 3D */
+.btn-dash-rie{
+  background:linear-gradient(180deg,#ffffff 0%,#f1f3f5 60%,#e2e6ea 100%);
+  color:#374151;border-color:#cbd5d9;
+}
+.btn-dash-rie:hover{
+  background:linear-gradient(180deg,#ffffff 0%,#e9ecef 60%,#ced4da 100%);
+}
+
+/* Duplica → teal chiaro */
+.btn-dash-dup{
+  background:linear-gradient(180deg,#a8e0e0 0%,#7bc8c8 60%,#4ea8a8 100%);
+  color:#fff;border-color:#3a8989;
+  text-shadow:0 1px 0 rgba(0,0,0,.12);
+}
+.btn-dash-dup:hover{
+  background:linear-gradient(180deg,#b8e8e8 0%,#85d3d3 60%,#3a8989 100%);
+}
+
+/* Elimina → rosso 3D */
+.btn-dash-del{
+  background:linear-gradient(180deg,#e85a4f 0%,#dc3545 60%,#a02832 100%);
+  color:white;border-color:#922834;
+  text-shadow:0 1px 0 rgba(0,0,0,.12);
+}
+.btn-dash-del:hover{
+  background:linear-gradient(180deg,#f06b62 0%,#c8303f 60%,#7a1f28 100%);
+}
+
+/* Toolbar dashboard */
+.dash-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--o-surface);
+  padding:10px 16px;
+  border:1px solid var(--o-border);border-radius:3px 3px 0 0;
+  border-bottom:none;
+}
+.dash-toolbar-left{display:flex;align-items:center;gap:10px}
+.dash-toolbar-title{font-size:.85rem;font-weight:500;color:var(--o-text)}
+.dash-filter-select{
+  font-family:inherit;font-size:.78rem;font-weight:400;
+  padding:5px 24px 5px 10px;border:1px solid var(--o-border);border-radius:3px;
+  background:var(--o-surface);color:var(--o-text);cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 6px center;
+}
+.dash-count-pill{
+  background:var(--o-bg);color:var(--o-text-muted);
+  font-size:.74rem;font-weight:400;padding:2px 8px;border-radius:3px;
+  border:1px solid var(--o-border);
+}
+.dash-toolbar-right{display:flex;gap:6px}
+.btn-dash-exp{
+  font-family:inherit;font-size:.78rem;font-weight:400;
+  padding:5px 12px;border-radius:3px;border:1px solid transparent;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;transition:all .12s;
+}
+.btn-dash-xl{background:#1d6f42;color:white;border-color:#1d6f42}
+.btn-dash-xl:hover{background:#175a35;border-color:#175a35}
+.btn-dash-pd{background:var(--o-danger);color:white;border-color:var(--o-danger)}
+.btn-dash-pd:hover{background:#c82333;border-color:#c82333}
+
+#dash-search{
+  font-family:inherit;font-size:.78rem;
+  padding:5px 10px;border:1px solid var(--o-border);border-radius:3px;
+  min-width:240px;outline:none;
+}
+#dash-search:focus{border-color:var(--o-primary)}
+
+/* ============== FORM VIEW (sheet stile Odoo) ============== */
+
+.o-form-view{
+  max-width:1600px;margin:16px auto;
+  padding:0 24px;
+}
+.o-sheet{
+  background:var(--o-surface);
+  border:1px solid var(--o-border);
+  border-radius:3px;
+  box-shadow:var(--o-shadow);
+  padding:24px 32px;
+  margin-bottom:16px;
+}
+
+.card{
+  background:var(--o-surface);
+  border:1px solid var(--o-border);
+  border-radius:3px;
+  box-shadow:var(--o-shadow-sm);
+  margin-bottom:12px;
+  overflow:hidden;
+}
+.sec-title{
+  background:var(--o-bg);
+  color:var(--o-text);
+  font-weight:700;font-size:1rem;
+  padding:12px 18px;
+  letter-spacing:.04em;text-transform:uppercase;
+  border-bottom:1px solid var(--o-border);
+  display:flex;align-items:center;gap:12px;
+}
+.sec-title i{font-size:1.1rem}
+.sec-title-bar{
+  width:5px;align-self:stretch;
+  border-radius:2px;
+  margin:-10px 0 -11px -16px;
+}
+
+/* Sezioni costo (Manodopera/Materiali/Servizi/Manutenzione/Trasferte): tutte celesti */
+.sec-title.sec-mano,
+.sec-title.sec-mat,
+.sec-title.sec-serv,
+.sec-title.sec-manut,
+.sec-title.sec-tras{
+  background:linear-gradient(90deg,#1976d2 0,#1976d2 5px,#e3f2fd 5px,#e3f2fd 100%);
+  color:#0d47a1;
+  border-bottom-color:#bbdefb;
+}
+.sec-title.sec-mano i,
+.sec-title.sec-mat i,
+.sec-title.sec-serv i,
+.sec-title.sec-manut i,
+.sec-title.sec-tras i{color:#1976d2}
+
+/* Sezioni speciali: dati commessa (viola), spese generali (giallo/arancio), sconto (rosso) */
+.sec-title.sec-dati{background:linear-gradient(90deg,#714b67 0,#714b67 5px,#f3e9f0 5px,#f3e9f0 100%);color:#4a2e42;border-bottom-color:#dfc6d5}
+.sec-title.sec-dati i{color:#714b67}
+
+.sec-title.sec-spese{background:linear-gradient(90deg,#f57f17 0,#f57f17 5px,#fff9c4 5px,#fff9c4 100%);color:#e65100;border-bottom-color:#fff59d}
+.sec-title.sec-spese i{color:#f57f17}
+
+.sec-title.admin{background:linear-gradient(90deg,#714b67 0,#714b67 5px,#f3e9f0 5px,#f3e9f0 100%);color:var(--o-primary-dark);border-bottom-color:#e0c5d8}
+.sec-title.admin i{color:#714b67}
+
+.sec-title.sconto{background:linear-gradient(90deg,#dc3545 0,#dc3545 5px,#fdecea 5px,#fdecea 100%);color:#a94442;border-bottom-color:#f5c6cb}
+.sec-title.sconto i{color:#dc3545}
+
+/* Bordo top card: celeste per tutte le sezioni costo, distinto per le altre */
+.card.sec-card-mano,
+.card.sec-card-mat,
+.card.sec-card-serv,
+.card.sec-card-manut,
+.card.sec-card-tras{border-top:3px solid #1976d2}
+.card.sec-card-spese{border-top:3px solid #f57f17}
+.card.sec-card-dati{border-top:3px solid #714b67}
+.card.sec-card-sconto{border-top:3px solid #dc3545}
+.card-body{padding:14px;overflow-x:auto;max-width:100%;box-sizing:border-box;-webkit-overflow-scrolling:touch}
+
+/* ===== Barra Prezzo Imposto (sopra Dati Commessa) ===== */
+.pi-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;background:#faf5ff;border:1px solid #ddd6fe;border-left:4px solid #7c3aed;border-radius:6px}
+.pi-bar-active{background:#ede9fe;border-color:#c4b5fd;border-left-color:#6d28d9}
+.pi-bar-hint{font-size:.78rem;color:#6b7280}
+.btn-pi-add{background:linear-gradient(180deg,#8b5cf6,#7c3aed);color:#fff;border:1px solid #6d28d9;border-radius:5px;padding:7px 16px;font-weight:600;font-size:.92rem;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .12s}
+.btn-pi-add:hover{background:linear-gradient(180deg,#7c3aed,#6d28d9);box-shadow:0 2px 6px rgba(124,58,237,.25);transform:translateY(-1px)}
+.pi-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;background:#fff;border:1.5px solid #6d28d9;border-radius:18px;color:#6d28d9;font-weight:500;font-size:.95rem}
+.pi-pill b{font-weight:700}
+.pi-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.pi-badge.pi-ok{background:#dcfce7;color:#15803d}
+.pi-badge.pi-ko{background:#fee2e2;color:#dc2626}
+.pi-badge.pi-wait{background:#fef9c3;color:#ca8a04}
+.pi-badge.pi-draft{background:#e5e7eb;color:#4b5563}
+.btn-pi-edit,.btn-pi-remove{background:#fff;border:1px solid #d1d5db;border-radius:4px;width:28px;height:28px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;transition:all .12s}
+.btn-pi-edit:hover{border-color:#7c3aed;color:#7c3aed}
+.btn-pi-remove:hover{border-color:#dc2626;color:#dc2626;background:#fef2f2}
+
+/* Form fields stile Odoo: label UPPERCASE grigio chiaro a sx, valore a dx */
+.grid-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 36px}
+.grid-form .full{grid-column:1/-1}
+.grid-form > div{
+  display:grid;
+  grid-template-columns:160px 1fr;
+  align-items:center;
+  gap:10px;
+  padding:6px 0;
+  border-bottom:1px solid #eef0f2;
+  min-height:34px;
+}
+.grid-form > div:hover{background:#fafbfc}
+.grid-form > div.full{grid-template-columns:160px 1fr}
+.grid-form label{
+  font-size:.74rem;
+  color:var(--o-label);
+  font-weight:600;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  margin:0;
+  text-align:left;
+  align-self:center;
+}
+.grid-form input,.grid-form select{
+  width:100%;border:none;
+  border-radius:0;padding:3px 0;font-size:.88rem;
+  font-family:inherit;background:transparent;color:var(--o-text);
+  outline:none;transition:border-color .12s;
+  border-bottom:1px solid transparent;
+}
+.grid-form input:hover:not([readonly]),.grid-form select:hover{border-bottom-color:#cfd4d9}
+.grid-form input:focus,.grid-form select:focus{border-bottom-color:var(--o-action)}
+.grid-form input[readonly]{
+  background:rgba(113,75,103,.04);
+  color:#000;
+  font-weight:700;
+  font-size:1rem;
+  cursor:default;
+  border-bottom:1px dashed #cfd4d9 !important;
+  font-style:normal;
+  padding:5px 8px !important;
+  border-radius:3px 3px 0 0;
+}
+.grid-form input[readonly]:placeholder-shown{
+  background:transparent;
+  color:#adb5bd;
+  font-weight:400;
+  font-size:.85rem;
+}
+/* Markup readonly per ruolo "user": grigio non modificabile, distinto dal campo standard */
+input.markup-locked{
+  background:#f3f4f6;color:#6b7280;
+  border:1px solid #e5e7eb;border-radius:4px;
+  cursor:not-allowed;font-weight:500;
+}
+input.markup-locked:focus{outline:none;box-shadow:none}
+/* Pseudo-tag "AUTO" piccolo dopo la label per i campi auto-da-Odoo */
+.grid-form > div:has(input[readonly][title*="Auto"]) label::after{
+  content:"AUTO";
+  display:inline-block;margin-left:6px;
+  font-size:.6rem;font-weight:600;letter-spacing:.04em;
+  background:rgba(113,75,103,.10);color:var(--o-primary);
+  padding:1px 5px;border-radius:2px;
+  text-transform:uppercase;vertical-align:middle;
+}
+/* Campo numero ordine Odoo: prominente e separato dagli altri campi */
+.grid-form > div.odoo-field-row{
+  grid-column:1/-1 !important;
+  grid-template-columns:230px 1fr !important;
+  background:linear-gradient(90deg,rgba(113,75,103,.10) 0%,rgba(113,75,103,.02) 70%);
+  border:2px solid var(--o-primary);
+  border-radius:6px;
+  padding:12px 16px 12px 22px;
+  margin:6px 0 14px;
+  box-shadow:0 2px 8px rgba(113,75,103,.15);
+  position:relative;
+}
+.grid-form > div.odoo-field-row::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:6px;
+  background:var(--o-primary);border-radius:4px 0 0 4px;
+}
+.grid-form > div.odoo-field-row label{
+  font-size:.95rem;font-weight:700;
+  color:var(--o-primary);
+  text-transform:uppercase;letter-spacing:.05em;
+}
+.grid-form > div.odoo-field-row label i{margin-right:8px;font-size:1.05rem}
+.grid-form input.odoo-field{
+  font-weight:400;font-size:1.4rem;
+  color:#1e1e1e;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.08em;
+  border-bottom:2px solid var(--o-primary) !important;
+  padding:8px 10px !important;
+  background:white;
+  border-radius:4px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.06);
+}
+.grid-form input.odoo-field::placeholder{
+  color:#a47ca1;font-weight:400;font-size:1rem;letter-spacing:0;
+  text-transform:none;font-family:'Lato',sans-serif;
+}
+.grid-form input.odoo-field:focus{
+  outline:none;
+  border-bottom-color:#5b3950 !important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.08), 0 0 0 3px rgba(113,75,103,.18);
+}
+/* Stato "in lavorazione" durante interrogazione Odoo: overlay grigio + cursore Società Benefit */
+body.odoo-loading,
+body.odoo-loading *{
+  cursor:url('../cursor-loading.svg?v=47') 16 16, wait !important;
+}
+body.odoo-loading::before{
+  content:"";
+  position:fixed;inset:0;
+  background:rgba(15,15,25,.28);
+  z-index:9999;
+  animation:odooFadeIn .15s ease-out;
+}
+@keyframes odooFadeIn{from{opacity:0}to{opacity:1}}
+
+/* Tabelle interne form (linee offerta) */
+.card-body table{
+  width:100%;border-collapse:collapse;font-size:.82rem;
+  background:var(--o-surface);
+}
+.card-body table th{
+  background:var(--o-bg);color:var(--o-text);
+  font-weight:700;font-size:.82rem;
+  padding:9px 10px;
+  text-align:center;
+  letter-spacing:.02em;
+  border-bottom:2px solid var(--o-border);
+  white-space:nowrap;
+}
+/* Prima colonna (descrizione/categoria) allineata a sx come è naturale */
+.card-body table th:first-child{text-align:left}
+.card-body table td{
+  padding:4px 6px;border-bottom:1px solid var(--o-border-light);
+}
+.card-body table tr:nth-child(even) td{background:transparent}
+.card-body table tr:hover td{background:var(--o-row-hover)}
+.card-body table td input,
+.card-body table td select{
+  border:1px solid #ced4da;
+  border-radius:3px;
+  padding:5px 7px;
+  font-size:.82rem;
+  width:100%;
+  font-family:inherit;
+  background:white;
+  outline:none;
+  transition:border-color .12s, box-shadow .12s;
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.03);
+}
+.card-body table td input:hover:not([readonly]),
+.card-body table td select:hover{
+  border-color:#1976d2;
+}
+.card-body table td input:focus,
+.card-body table td select:focus{
+  border-color:#1976d2;
+  box-shadow:0 0 0 2px rgba(25,118,210,.18);
+}
+.card-body table td input[readonly]{
+  background:#f3f4f6;color:var(--o-text);cursor:default;
+  border-color:#e2e6ea;
+}
+/* Allinea numerici a destra per leggibilità immediata */
+.card-body table td input[type="number"]{text-align:right;font-variant-numeric:tabular-nums}
+/* Cella più ariosa per ospitare gli input bordati */
+.card-body table td{padding:5px 7px}
+.td-r{text-align:right;font-weight:400;color:var(--o-text)}
+.td-pv{text-align:right;font-weight:700;font-size:.82rem;color:var(--o-action)}
+.td-mg{text-align:right;color:var(--o-success)}
+
+.card-body table tfoot td{
+  background:var(--o-bg) !important;
+  font-weight:700;font-size:.92rem;color:var(--o-text);
+  border-top:2px solid var(--o-border);
+  padding:7px 8px;text-align:right;
+}
+.card-body table tfoot td.td-mg{color:var(--o-success)}
+
+.add-row{
+  color:var(--o-action);font-size:.82rem;font-weight:400;
+  cursor:pointer;margin-top:8px;display:inline-flex;align-items:center;gap:6px;
+  border:none;background:none;padding:4px 0;
+}
+.add-row:hover{color:var(--o-action-dark);text-decoration:underline}
+.del-btn{
+  color:var(--o-text-muted);cursor:pointer;
+  font-size:.95rem;border:none;background:none;
+  padding:0 4px;line-height:1;
+}
+.del-btn:hover{color:var(--o-danger)}
+
+/* Bottom bar */
+.bottom-bar{
+  background:var(--o-surface);
+  border:1px solid var(--o-border);border-radius:3px;
+  padding:14px 18px;
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;flex-wrap:wrap;gap:12px;
+  box-shadow:var(--o-shadow-sm);
+}
+.green-txt{color:var(--o-success)}
+.yellow-txt{color:var(--o-warning)}
+.red-txt{color:var(--o-danger)}
+
+/* ============== BADGES ============== */
+
+.badge{
+  display:inline-block;font-family:inherit;
+  font-size:.7rem;font-weight:400;
+  padding:2px 7px;border-radius:3px;margin-left:6px;letter-spacing:0;
+  border:1px solid transparent;
+}
+.badge-user{background:#e7f4f5;color:var(--o-action);border-color:#b3dee0}
+.badge-admin{background:#f3e9f0;color:var(--o-primary);border-color:#dfc6d5}
+.badge-supervisore{background:#d4edda;color:#155724;border-color:#a5d8b1}
+
+/* ============== LOGIN ============== */
+
+.login-wrap{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;
+  background:linear-gradient(135deg,var(--o-primary) 0%,var(--o-primary-dark) 100%);
+}
+.login-card{
+  background:white;border-radius:6px;
+  padding:36px 32px;max-width:380px;width:100%;
+  box-shadow:0 8px 32px rgba(0,0,0,.20);
+  text-align:center;
+}
+.login-card h1{
+  color:var(--o-primary);
+  margin:8px 0 4px;
+  font-size:1.5rem;font-weight:500;
+}
+.login-card p{color:var(--o-text-muted);font-size:.82rem;margin-bottom:24px}
+.login-card input{
+  width:100%;border:1px solid var(--o-border);border-radius:3px;
+  padding:10px 12px;font-size:.92rem;margin-bottom:12px;
+  font-family:inherit;outline:none;transition:border-color .12s;
+}
+.login-card input:focus{border-color:var(--o-primary)}
+.login-err{color:var(--o-danger);font-size:.8rem;margin-bottom:10px;min-height:18px}
+
+/* ============== RIEPILOGO ============== */
+
+.riep-table{margin:0}
+.riep-table th{
+  background:var(--o-bg);color:var(--o-text);
+  font-size:.74rem;font-weight:500;
+  text-transform:none;letter-spacing:0;
+  padding:9px 12px;border-bottom:1px solid var(--o-border);
+}
+.riep-table td{padding:8px 12px;border-bottom:1px solid var(--o-border-light)}
+.riep-table tr:nth-child(even) td{background:transparent}
+.riep-total td{
+  background:var(--o-bg) !important;
+  color:var(--o-text);font-weight:500;font-size:.88rem;
+  border-top:2px solid var(--o-primary) !important;border-bottom:none;
+}
+.riep-total-calc td{
+  background:#f3f4f6 !important;color:#4b5563;font-weight:500;
+  border-top:2px solid #9ca3af !important;
+}
+.riep-total-pi td{
+  background:#ede9fe !important;color:#5b21b6;font-weight:700;font-size:.95rem;
+  border-top:2px solid #7c3aed !important;
+}
+.riep-spese td{
+  background:#fff8e1 !important;
+  color:#856404;font-weight:500;
+}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+.kpi{border-radius:3px;padding:14px;text-align:center;border:1px solid var(--o-border)}
+.kpi .label{font-size:.74rem;font-weight:500;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.kpi .value{font-size:1.15rem;font-weight:500}
+
+/* ============== ADMIN UTENTI ============== */
+
+.user-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--o-border-light);
+  flex-wrap:wrap;
+}
+.user-row:last-child{border-bottom:none}
+.user-row:hover{background:var(--o-row-hover)}
+
+/* Odoo-style "cassetto" Odoo notice */
+.odoo-bar{
+  background:#fff3cd;border:1px solid #ffeaa7;border-radius:3px;
+  padding:10px 14px;margin-bottom:12px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  font-size:.85rem;color:#856404;
+}
+.odoo-bar.success{background:#d4edda;border-color:#a5d8b1;color:#155724}
+
+/* Odoo dropdown */
+.odoo-dropdown{
+  position:absolute;z-index:999;
+  background:white;border:1px solid var(--o-border);border-radius:3px;
+  box-shadow:var(--o-shadow-lg);
+  max-height:280px;overflow-y:auto;
+  width:480px;left:0;top:100%;margin-top:2px;
+}
+.odoo-dropdown-item{
+  padding:8px 12px;cursor:pointer;
+  border-bottom:1px solid var(--o-border-light);
+  display:flex;align-items:center;gap:10px;
+}
+.odoo-dropdown-item:hover{background:var(--o-row-hover)}
+.odoo-dropdown-item:last-child{border-bottom:none}
+.odoo-dd-code{
+  font-weight:800;color:#000;font-size:1rem;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-width:90px;
+}
+.odoo-dd-cliente{
+  font-weight:800;color:#000;font-size:1rem;
+  white-space:nowrap;
+}
+.odoo-dd-nome{
+  font-weight:700;color:#000;font-size:.95rem;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
+}
+
+/* ============== TOAST (in utils.js) ============== */
+/* posizionamento gestito inline da utils.js, qui solo rifiniture */
+
+/* ============== MOBILE ============== */
+@media(max-width:768px){
+  .topnav{flex-wrap:wrap;height:auto;padding:0;gap:0}
+  .topnav-logo{flex:1;min-width:120px}
+  .topnav-links{order:3;flex-basis:100%;flex-wrap:wrap;height:auto;padding:0;background:rgba(0,0,0,.10)}
+  .topnav-link{height:40px;padding:0 10px;border-bottom:none}
+  .topnav-link.active{border-bottom:none;border-left:3px solid white}
+  .topnav-right{margin-left:0;flex-wrap:wrap}
+  .topnav-username{display:none}
+
+  .o-control-panel{padding:8px 12px;gap:8px}
+  .o-cp-search input{min-width:0;width:100%}
+
+  .kpi-bar{grid-template-columns:1fr 1fr}
+  .kpi-item{padding:10px 12px}
+  .kpi-value{font-size:1.05rem}
+
+  .dash-toolbar{flex-direction:column;align-items:stretch;gap:8px}
+  .dash-toolbar-left{flex-wrap:wrap}
+  .dash-toolbar-right{justify-content:flex-end}
+  #dash-search{min-width:0;width:100%}
+
+  /* List a card */
+  .dash-table{display:block}
+  .dash-table thead{display:none}
+  .dash-table tbody{display:block}
+  .dash-table tbody tr{display:block;background:white;border:1px solid var(--o-border);border-radius:3px;margin-bottom:8px;padding:10px;box-shadow:var(--o-shadow-sm)}
+  .dash-table tbody tr:hover{background:white}
+  .dash-table tbody td{display:flex;justify-content:space-between;padding:4px 0;border:none;font-size:.82rem;text-align:left !important}
+  .dash-table tbody td::before{content:attr(data-label);color:var(--o-text-muted);font-size:.7rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;margin-right:10px}
+  .dash-table colgroup{display:none}
+  .dash-tot-row{display:none}
+
+  /* Form sheet mobile */
+  .o-form-view{padding:0 8px;margin:8px 0}
+  .o-sheet{padding:14px}
+  .grid-form{grid-template-columns:1fr;gap:6px}
+
+  /* Form tabelle a card */
+  .card-body{padding:8px}
+  .card-body table{display:block}
+  .card-body table thead{display:none}
+  .card-body table tfoot{display:block;margin-top:8px;padding-top:8px;border-top:2px solid var(--o-border)}
+  .card-body table tfoot tr,.card-body table tfoot td{display:block;text-align:left;padding:2px 0}
+  .card-body table tbody{display:block}
+  .card-body table tbody tr{display:block;background:var(--o-bg);border:1px solid var(--o-border);border-radius:3px;margin-bottom:6px;padding:8px}
+  .card-body table tbody tr:nth-child(even) td{background:transparent}
+  .card-body table tbody td{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0;border:none}
+  .card-body table tbody td::before{content:attr(data-label);color:var(--o-text-muted);font-size:.7rem;font-weight:500;text-transform:uppercase;flex-shrink:0;min-width:70px}
+  .card-body table tbody td input,.card-body table tbody td select{flex:1;min-width:0 !important}
+
+  .bottom-bar{flex-direction:column;align-items:stretch;text-align:center}
+  .riep-table{font-size:.78rem}
+  .riep-table th,.riep-table td{padding:6px 4px}
+  .login-card{padding:24px;margin:12px}
+  .o-statusbar{padding:6px 12px}
+  .o-status-pill{font-size:.72rem;padding:4px 10px}
+  .btn-tnav-help-label{display:none}
+  .guida-page{flex-direction:column}
+  .guida-toc{position:static;width:auto;margin:8px 16px}
+}
+
+/* ============== GUIDA UTENTE ============== */
+
+.btn-tnav-help{
+  background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);
+  border:1px solid #fbbf24;
+  color:#92400e;
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.78rem;font-weight:700;
+  padding:7px 16px;
+  border-radius:20px;
+  cursor:pointer;
+  transition:all .18s ease;
+  text-transform:uppercase;letter-spacing:.06em;
+  box-shadow:0 2px 4px rgba(180,83,9,.25), inset 0 1px 0 rgba(255,255,255,.5);
+  position:relative;
+}
+.btn-tnav-help:hover{
+  background:linear-gradient(135deg,#fde68a 0%,#fcd34d 100%);
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(180,83,9,.4), inset 0 1px 0 rgba(255,255,255,.5);
+  border-color:#d97706;
+}
+.btn-tnav-help:active{transform:translateY(0);box-shadow:0 1px 2px rgba(180,83,9,.3)}
+.btn-tnav-help i{font-size:1.05rem;color:#d97706}
+
+.guida-page{
+  display:flex;gap:24px;
+  max-width:1400px;margin:0 auto;padding:20px 24px;
+}
+.guida-toc{
+  position:sticky;top:14px;align-self:flex-start;
+  width:230px;flex-shrink:0;
+  background:var(--o-surface);border:1px solid var(--o-border);
+  border-radius:6px;padding:14px 12px;box-shadow:var(--o-shadow-sm);
+}
+.guida-toc-title{
+  font-size:.72rem;font-weight:700;color:var(--o-text-muted);
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;
+}
+.guida-toc a{
+  display:block;padding:7px 10px;margin-bottom:2px;
+  font-size:.86rem;color:#475569;text-decoration:none;
+  border-radius:4px;border-left:2px solid transparent;
+  transition:all .12s ease;
+}
+.guida-toc a:hover{background:#f1f5f9;border-left-color:#475569;color:#1e293b}
+.guida-toc a.guida-toc-sub{padding-left:22px;font-size:.8rem;color:#64748b}
+.guida-toc-sep{height:1px;background:var(--o-border);margin:14px 0 10px}
+.guida-print-btn{width:100%;justify-content:center;font-size:.78rem}
+
+.guida-content{flex:1;min-width:0;background:var(--o-surface);border:1px solid var(--o-border);border-radius:6px;padding:32px 40px;box-shadow:var(--o-shadow-sm)}
+.guida-header{border-bottom:2px solid #475569;padding-bottom:14px;margin-bottom:24px}
+.guida-header h1{font-size:1.6rem;color:#475569;margin:0;font-weight:700;letter-spacing:.01em}
+.guida-sub{font-size:.82rem;color:var(--o-text-muted);margin-top:4px}
+
+.guida-section{margin-bottom:36px;scroll-margin-top:14px}
+.guida-section h2{
+  font-size:1.15rem;color:#1e293b;margin:0 0 6px;
+  padding:8px 14px;background:#f1f5f9;border-left:4px solid #475569;border-radius:3px;
+}
+.guida-section h3{
+  font-size:.95rem;color:#475569;margin:18px 0 6px;
+  font-weight:700;letter-spacing:.02em;
+}
+.guida-lead{font-size:.95rem;color:#334155;margin:8px 0 14px;line-height:1.55}
+.guida-section p,.guida-section li{font-size:.88rem;color:#1f2937;line-height:1.55}
+.guida-section ul,.guida-section ol{margin:6px 0 12px 20px}
+.guida-section li{margin-bottom:4px}
+.guida-section code{background:#f1f5f9;padding:1px 6px;border-radius:3px;font-size:.82rem;color:#475569;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.guida-section strong{color:#0f172a}
+
+.guida-img-wrap{
+  margin:14px 0;border:1px solid var(--o-border);border-radius:6px;
+  overflow:hidden;background:#fafbfc;
+  position:relative;
+}
+.guida-img-wrap img{display:block;width:100%;height:auto}
+
+/* Marker numerato sopra l'immagine: cerchio rosso con numero bianco */
+.guida-img-anno .guida-marker{
+  position:absolute;
+  width:32px;height:32px;
+  margin-left:-16px;margin-top:-16px;
+  border-radius:50%;
+  background:#ef4444;
+  border:3px solid #fff;
+  color:#fff;
+  font-weight:700;font-size:.95rem;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.3), 0 0 0 4px rgba(239,68,68,.25);
+  pointer-events:none;
+  z-index:2;
+}
+
+/* Legenda sotto l'immagine */
+.guida-marker-legend{
+  list-style:none;margin:8px 0 16px;padding:12px 16px;
+  background:#fafbfc;border:1px solid var(--o-border-light);border-radius:6px;
+}
+.guida-marker-legend li{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:5px 0;
+  font-size:.86rem;line-height:1.5;color:#334155;
+}
+.guida-marker-legend li + li{border-top:1px dashed #e2e8f0;padding-top:8px}
+.guida-marker-mini{
+  flex-shrink:0;
+  width:22px;height:22px;
+  border-radius:50%;
+  background:#ef4444;color:#fff;
+  font-weight:700;font-size:.75rem;
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-top:1px;
+}
+.guida-img-placeholder{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:36px 20px;color:var(--o-text-muted);text-align:center;gap:6px;
+}
+.guida-img-placeholder i{font-size:2rem;color:#cbd5e1;margin-bottom:4px}
+.guida-img-placeholder-title{font-weight:600;color:#475569;font-size:.92rem}
+.guida-img-placeholder-hint{font-size:.78rem;opacity:.85}
+.guida-img-placeholder code{background:#e2e8f0;padding:1px 6px;border-radius:3px;font-size:.76rem}
+
+.guida-callout{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:12px 16px;margin:14px 0;border-radius:6px;
+  background:#eff6ff;border-left:4px solid #2563eb;
+  font-size:.86rem;line-height:1.5;
+}
+.guida-callout i{font-size:1.05rem;color:#2563eb;margin-top:2px}
+.guida-info{background:#eff6ff;border-left-color:#2563eb}
+.guida-info i{color:#2563eb}
+.guida-warn{background:#fefce8;border-left-color:#ca8a04}
+.guida-warn i{color:#ca8a04}
+
+.guida-footer{
+  margin-top:30px;padding-top:14px;border-top:1px solid var(--o-border-light);
+  font-size:.78rem;color:var(--o-text-muted);text-align:center;
+}
+
+@media print{
+  .topnav,.o-control-panel,.guida-toc,.btn-tnav-help{display:none !important}
+  .guida-page{display:block;padding:0;max-width:none}
+  .guida-content{border:none;box-shadow:none;padding:0}
+  .guida-section{page-break-inside:avoid}
+  .guida-section h2{background:transparent !important;border-left-color:#475569}
+  body{background:white !important}
+  a{color:inherit;text-decoration:none}
+}
