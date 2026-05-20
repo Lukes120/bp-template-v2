@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/calcoli.php'; // costanti BP_MARGINE_GREEN/YELLOW usate da bp_mail_color_margine
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -47,12 +48,12 @@ function bp_mail_credenziali(string $email, string $nome, string $username, stri
 }
 
 /**
- * Colore del badge margine % in base alle soglie comuni (20/10/0).
+ * Colore del badge margine % in base alle soglie comuni (vedi BP_MARGINE_GREEN/YELLOW in core/calcoli.php).
  */
 function bp_mail_color_margine(float $mP): string {
-    if ($mP >= 20) return '#15803d'; // verde
-    if ($mP >= 10) return '#ca8a04'; // giallo
-    return '#dc2626';                // rosso
+    if ($mP >= BP_MARGINE_GREEN)  return '#15803d'; // verde
+    if ($mP >= BP_MARGINE_YELLOW) return '#ca8a04'; // giallo
+    return '#dc2626';                                // rosso
 }
 
 /**

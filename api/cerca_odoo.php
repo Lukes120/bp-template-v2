@@ -15,9 +15,9 @@ if (strlen($query) < 2) {
     bp_json_out(['ok' => true, 'risultati' => []]);
 }
 
-// Filtro per "Addetto Vendite" (sale.order.user_id) se non admin/supervisore.
+// Filtro per "Addetto Vendite" (sale.order.user_id) se non admin/supervisore/viewer.
 // Se l'utente non ha odoo_uid (es. admin locale 'u0' senza SSO Odoo), nessun risultato.
-$canSeeAll = in_array($me['ruolo'] ?? '', ['admin', 'supervisore'], true);
+$canSeeAll = in_array($me['ruolo'] ?? '', ['admin', 'supervisore', 'viewer'], true);
 $domain = [['name', 'ilike', $query]];
 if (!$canSeeAll) {
     if (empty($me['odoo_uid'])) {

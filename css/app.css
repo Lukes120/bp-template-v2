@@ -867,6 +867,7 @@ body.odoo-loading::before{
 .badge-user{background:#e7f4f5;color:var(--o-action);border-color:#b3dee0}
 .badge-admin{background:#f3e9f0;color:var(--o-primary);border-color:#dfc6d5}
 .badge-supervisore{background:#d4edda;color:#155724;border-color:#a5d8b1}
+.badge-viewer{background:#fff3cd;color:#7c5e00;border-color:#ffeeba}
 
 /* ============== LOGIN ============== */
 

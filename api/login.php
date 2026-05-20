@@ -10,6 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $d = bp_json_input();
 $username = trim($d['username'] ?? '');
 $password = $d['password'] ?? '';
+$totp     = trim($d['totp'] ?? '');           // codice 2FA al secondo submit
+$pendingT = trim($d['pending_token'] ?? ''); // ticket pending al 2° submit per saltare GET/POST /web/login
 if (!$username || !$password) {
     bp_json_out(['error' => 'Username e password obbligatori'], 400);
 }
@@ -39,12 +41,17 @@ $loggedVia = null;
 if ($u && password_verify($password, $u['password_hash'])) {
     $loggedVia = 'local';
 } else {
-    // Prova Odoo SSO
+    // Prova Odoo SSO via web flow (supporta 2FA + pending ticket per fast 2nd submit)
     try {
-        $odooUser = bp_odoo_authenticate($username, $password);
+        $odooUser = bp_odoo_authenticate($username, $password, $totp ?: null, $pendingT ?: null);
     } catch (Throwable $e) {
         $odooUser = null;
         error_log('Odoo SSO error: ' . $e->getMessage());
+    }
+
+    // 2FA richiesto: rispondi col token pending, frontend lo includera' al 2° submit per skip GET/POST /web/login
+    if (is_array($odooUser) && !empty($odooUser['totp_required'])) {
+        bp_json_out(['ok' => false, 'totp_required' => true, 'pending_token' => $odooUser['pending_token'] ?? '']);
     }
 
     if ($odooUser) {
@@ -95,7 +102,7 @@ bp_db()->prepare("DELETE FROM sessions WHERE user_id = :uid")->execute(['uid' =>
 $token = bp_session_create($u['id']);
 $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
 setcookie('bp_session', $token, [
-    'expires'  => time() + 604800,
+    'expires'  => time() + BP_SESSION_TTL,
     'path'     => '/',
     'secure'   => $secure,
     'httponly' => true,
@@ -106,7 +113,7 @@ setcookie('bp_session', $token, [
 // SameSite=Strict rinforza: il browser non lo manda su richieste cross-site.
 $csrf = bin2hex(random_bytes(32));
 setcookie('bp_csrf', $csrf, [
-    'expires'  => time() + 604800,
+    'expires'  => time() + BP_SESSION_TTL,
     'path'     => '/',
     'secure'   => $secure,
     'httponly' => false,

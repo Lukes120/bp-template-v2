@@ -32,36 +32,58 @@ function _mutatingHeaders(extra){
 }
 
 async function _handle(res){
-  if (res.status === 401) {
-    // sessione scaduta o utente sloggato lato server
-    if (typeof currentUser !== 'undefined' && currentUser) {
-      currentUser = null; screen = 'login';
-      if (typeof toast === 'function') toast('Sessione scaduta — accedi di nuovo', 'warn');
-      if (typeof render === 'function') render();
-    }
+  // 401 di sessione scaduta: c'e' un currentUser attivo lato client -> sloggalo e ferma il flusso.
+  // 401 senza currentUser (es. login.php con password errata): NON lanciare, lascia che il chiamante
+  // legga il body JSON {"error": "..."} normalmente.
+  if (res.status === 401 && typeof currentUser !== 'undefined' && currentUser) {
+    currentUser = null; screen = 'login';
+    if (typeof toast === 'function') toast('Sessione scaduta — accedi di nuovo', 'warn');
+    if (typeof render === 'function') render();
     throw new Error('unauthorized');
   }
   return res;
 }
 
-async function apiGet(url){
-  const res = await _handle(await fetch(url, FETCH_OPTS));
-  return res.json();
+// Legge il body JSON in modo robusto: anche su status non-2xx il body PHP e' tipicamente
+// {"error": "..."} e il chiamante deve poterlo leggere per mostrare un messaggio utile
+// (evita il "Errore di rete" generico che era un bug UX preesistente).
+async function _safeJson(res){
+  try { return await res.json(); }
+  catch (e) { return { error: 'Risposta server non valida (HTTP ' + res.status + ')' }; }
 }
 
-async function apiPost(url, body){
-  const res = await _handle(await fetch(url, {
-    ...FETCH_OPTS,
-    method: 'POST',
-    headers: _mutatingHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-  }));
-  return res.json();
+async function apiGet(url){
+  const res = await _handle(await fetch(url, FETCH_OPTS));
+  return _safeJson(res);
+}
+
+async function apiPost(url, body, opts){
+  opts = opts || {};
+  let signal;
+  let timeoutId = null;
+  if (opts.timeoutMs) {
+    const controller = new AbortController();
+    signal = controller.signal;
+    timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs);
+  }
+  try {
+    const fetchOpts = {
+      ...FETCH_OPTS,
+      method: 'POST',
+      headers: _mutatingHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    };
+    if (signal) fetchOpts.signal = signal;
+    const res = await _handle(await fetch(url, fetchOpts));
+    return await _safeJson(res);
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+  }
 }
 
 async function apiDelete(url){
   const res = await _handle(await fetch(url, { ...FETCH_OPTS, method: 'DELETE', headers: _mutatingHeaders() }));
-  return res.json();
+  return _safeJson(res);
 }
 
 async function apiPostBlob(url, body){

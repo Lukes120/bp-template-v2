@@ -3,3 +3,13 @@
 <FilesMatch "\.(env|env\.template|db|db-shm|db-wal|bak|log|sqlite|sqlite3)$|^composer\.(json|lock)$|^\.gitignore$">
     Require all denied
 </FilesMatch>
+
+# Smart button Odoo: lo smart button costruisce URL tipo /S04170 anziche' /?nOrdine=S04170.
+# Cattura quel pattern e redirige (302) alla query string corretta che l'app legge via URLSearchParams.
+# Funziona solo se la URL NON e' un file reale (es. /index.html, /version.json, /api/*).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([Ss]\d+)/?$ /?nOrdine=$1 [R=302,L,NC]
+</IfModule>

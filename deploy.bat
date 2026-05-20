@@ -1,61 +1,58 @@
 @echo off
 chcp 65001 >nul
-title BP Template v2 - Deploy parallelo su upd.utterson.it
+title BP Template v2 - Deploy verso UTWGENWEB02 (Windows)
 
-set SERVER=upd.utterson.it
-set USER=root
-set REMOTE_PATH=/var/www/html/bp-template-v2
-set LOCAL_PATH=%~dp0
+REM Deploy via SMB share verso la VM UTWGENWEB02 (10.1.2.122) Windows Laragon.
+REM Sostituisce il vecchio deploy.bat che puntava a upd.utterson.it Linux (defunto da v28, 2026-05-02).
+REM
+REM Esegui questo script dalla cartella locale di sviluppo (C:\laragon\www\bp-template-v2\) sul PC dev.
+REM Requisiti: il PC dev deve essere sulla LAN aziendale, lo share \\UTWGENWEB02\c$ accessibile in scrittura.
 
-set WINSCP="C:\Program Files (x86)\WinSCP\WinSCP.com"
+set REMOTE=\\UTWGENWEB02\c$\laragon\www\bp-template-v2
+set LOCAL=%~dp0
 
 echo.
 echo  +======================================+
-echo  ^|   BP Template - Deploy automatico   ^|
+echo  ^|  BP Template v2 - Deploy verso VM   ^|
 echo  +======================================+
 echo.
-echo  Server : %SERVER%
-echo  Utente : %USER%
-echo  Remoto : %REMOTE_PATH%
-echo  Locale : %LOCAL_PATH%
+echo  Locale : %LOCAL%
+echo  Remoto : %REMOTE%
 echo.
 
-if not exist %WINSCP% (
-    echo  [ERRORE] WinSCP non trovato in %WINSCP%
+REM Test raggiungibilita' share
+if not exist "%REMOTE%\" (
+    echo  [ERRORE] Share remoto non raggiungibile: %REMOTE%
+    echo  Verifica: rete LAN aziendale, share admin abilitato, credenziali.
     pause
     exit /b 1
 )
 
-echo  Avvio sincronizzazione...
-echo  NOTA: data\bp_template.db, vendor\, config\credentials.env
-echo        sono esclusi (vedi .winscp_exclude)
+echo  Avvio robocopy con esclusioni standard...
 echo.
 
-set SCRIPT=%TEMP%\bp_deploy.txt
-(
-echo open sftp://%USER%@%SERVER%
-echo option confirm off
-echo option exclude "data/*.db; data/*.db-journal; vendor/; config/credentials.env; *.log; deploy.log; .git/"
-echo synchronize remote -delete "%LOCAL_PATH%\" "%REMOTE_PATH%"
-echo exit
-) > "%SCRIPT%"
+REM Esclusioni:
+REM   /XF: file (DB SQLite, credenziali env, log, zip, backup, test/debug temporanei)
+REM   /XD: cartelle (vendor=rigenerato con composer, .git, node_modules, backup locali, data/backups)
+robocopy "%LOCAL%" "%REMOTE%" /MIR ^
+    /XF "*.db" "*.db-journal" "*.db-shm" "*.db-wal" "credentials.env" "*.log" "*.zip" "_smoke_*.php" "_perf_*.php" "_unlock_*.php" "_opcache_*.php" "_check_*.php" "__test*.php" ^
+    /XD vendor .git node_modules "_backup_*" "data\backups" ^
+    /R:1 /W:1 /NP /TEE /LOG:"%LOCAL%deploy.log"
 
-%WINSCP% /script="%SCRIPT%" /log="%LOCAL_PATH%deploy.log"
+set RC=%ERRORLEVEL%
 
-if %errorlevel% equ 0 (
+echo.
+if %RC% LSS 8 (
+    echo  [OK] Deploy completato. URL: http://bptemplate.ecotelitalia.it:8080/
     echo.
-    echo  [OK] Deploy completato!
-    echo  Sito: https://servizi.utterson.it:8443/bp-template-v2/
-    echo.
-    echo  Sul server, ricordati di:
-    echo    cd %REMOTE_PATH%
-    echo    composer install --no-dev    # solo la prima volta o se composer.json cambia
-    echo    chown -R www-data:www-data data
+    echo  Promemoria:
+    echo    - opcache su VM e' disabilitato, modifiche attive subito
+    echo    - se composer.json e' cambiato, su VM esegui: composer install --no-dev
+    echo    - se config\credentials.env e' cambiato in dev, NON viene sincronizzato (escluso)
+    echo      aggiornare manualmente su VM tramite RDP o cmd Admin
 ) else (
-    echo.
-    echo  [ERRORE] Controlla deploy.log per dettagli.
+    echo  [ERRORE] robocopy ha restituito codice %RC%. Vedi deploy.log
 )
 
-del "%SCRIPT%" >nul 2>&1
 echo.
 pause

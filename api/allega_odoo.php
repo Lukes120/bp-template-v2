@@ -50,25 +50,58 @@ try {
     $ordineNome = $cerca['result'][0]['name'];
     $nomeFile   = 'BP';
 
-    $pdf = bp_pdf_offerta($form, $utente);
-    bp_odoo_call_kw_safe('ir.attachment', 'create', [[[
-        'name'      => $nomeFile . '.pdf',
-        'type'      => 'binary',
-        'datas'     => base64_encode($pdf),
-        'res_model' => 'sale.order',
-        'res_id'    => $ordineId,
-        'mimetype'  => 'application/pdf',
-    ]]], ['context' => []]);
+    // Cache PDF/XLSX su hash del payload offerta (vedi audit P1.1 2026-05-19).
+    // Se l'utente riallega la stessa offerta NON modificata, riusa file da disk:
+    // risparmia ~3-5s di bp_pdf_offerta (dompdf) + bp_xlsx_offerta (phpspreadsheet).
+    // Hash include form completo, quindi qualunque modifica invalida la cache automaticamente.
+    $cacheDir = __DIR__ . '/../data/cache_allegati';
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+    $cacheKey  = ($form['id'] ?? 'noid') . '_' . md5(json_encode($form));
+    $pdfCache  = $cacheDir . '/' . $cacheKey . '.pdf';
+    $xlsxCache = $cacheDir . '/' . $cacheKey . '.xlsx';
 
-    $xlsx = bp_xlsx_offerta($form, $utente);
-    bp_odoo_call_kw_safe('ir.attachment', 'create', [[[
-        'name'      => $nomeFile . '.xlsx',
-        'type'      => 'binary',
-        'datas'     => base64_encode($xlsx),
-        'res_model' => 'sale.order',
-        'res_id'    => $ordineId,
-        'mimetype'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ]]], ['context' => []]);
+    if (is_file($pdfCache)) {
+        $pdf = file_get_contents($pdfCache);
+    } else {
+        $pdf = bp_pdf_offerta($form, $utente);
+        @file_put_contents($pdfCache, $pdf);
+    }
+    if (is_file($xlsxCache)) {
+        $xlsx = file_get_contents($xlsxCache);
+    } else {
+        $xlsx = bp_xlsx_offerta($form, $utente);
+        @file_put_contents($xlsxCache, $xlsx);
+    }
+
+    // Pulizia opportunistica: 1/100 alleghi -> rimuove file cache piu' vecchi di 30 giorni
+    if (random_int(1, 100) === 1) {
+        $cutoff = time() - (30 * 86400);
+        foreach (glob($cacheDir . '/*.{pdf,xlsx}', GLOB_BRACE) ?: [] as $f) {
+            if (@filemtime($f) < $cutoff) @unlink($f);
+        }
+    }
+
+    $batch = bp_odoo_call_kw_safe('ir.attachment', 'create', [[
+        [
+            'name'      => $nomeFile . '.pdf',
+            'type'      => 'binary',
+            'datas'     => base64_encode($pdf),
+            'res_model' => 'sale.order',
+            'res_id'    => $ordineId,
+            'mimetype'  => 'application/pdf',
+        ],
+        [
+            'name'      => $nomeFile . '.xlsx',
+            'type'      => 'binary',
+            'datas'     => base64_encode($xlsx),
+            'res_model' => 'sale.order',
+            'res_id'    => $ordineId,
+            'mimetype'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
+    ]], ['context' => []]);
+    if (isset($batch['error'])) {
+        bp_json_out(['error' => 'Allega Odoo fallito: ' . ($batch['error']['message'] ?? 'errore sconosciuto')]);
+    }
 
     bp_audit('attach_odoo', 'offerte', $form['id'] ?? null, $ordineNome, bp_actor());
     if (!empty($form['id'])) {

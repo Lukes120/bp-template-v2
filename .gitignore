@@ -1,10 +1,23 @@
 vendor/
 data/*.db
 data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+data/backups/
+data/cache_allegati/
 config/credentials.env
 *.log
 deploy.log
 .DS_Store
-
-# Backup zip locali
-*.zip
+*.orig
+*.bak
+*.bak-*
+_backup_*/
+_smoke_*.php
+_perf_*.php
+_check_*.php
+_unlock_*.php
+_opcache_*.php
+guida/new*
+guida/output.txt
+guida/Immagine.jpg

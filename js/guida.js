@@ -52,6 +52,12 @@ function renderGuida(){
     '<section id="sez-login" class="guida-section">' +
       '<h2>1. Accesso all\'app</h2>' +
       '<p class="guida-lead">BP Template usa le <strong>stesse credenziali di Odoo</strong> (single sign-on). Non serve creare account separati.</p>' +
+      '<div class="guida-callout guida-info">' +
+        '<i class="fas fa-link"></i>' +
+        '<div><strong>URL applicazione</strong>: <code>https://bptemplate.ecotelitalia.it:8080/</code><br>' +
+        'Al primo accesso il browser mostrer&agrave; un avviso <em>"Connessione non privata"</em> (certificato interno aziendale). ' +
+        'Cliccare <strong>Avanzate &rarr; Procedi su bptemplate.ecotelitalia.it</strong>: una volta sola per ciascun browser/dispositivo, poi nessun ulteriore avviso.</div>' +
+      '</div>' +
       imgAnno('1-login.png', 'Schermata di login', [
         { x: 50, y: 47, label: 'Inserisci email Odoo (es. cognome@ecotelitalia.it)' },
         { x: 50, y: 60, label: 'Password Odoo' },
@@ -59,19 +65,32 @@ function renderGuida(){
       ]) +
       '<h3>Come accedere</h3>' +
       '<ol>' +
-        '<li>Apri l\'app dal browser oppure cliccando lo smart button <strong>"BP Template"</strong> sulle Vendite di Odoo.</li>' +
+        '<li>Apri l\'app dal browser all\'URL sopra, <strong>oppure</strong></li>' +
+        '<li>Dalla scheda <strong>Vendite</strong> di Odoo, apri una <strong>sale.order</strong> e clicca lo smart button <strong>"BP Template"</strong> in alto. L\'app si apre gi&agrave; sul preventivo/ordine corrispondente (deep-link).</li>' +
         '<li>Nel campo <strong>Username</strong> inserisci la tua email Odoo (es. <code>cognome@ecotelitalia.it</code>).</li>' +
         '<li>Nella <strong>Password</strong> usa quella di Odoo. La sessione resta aperta per 7 giorni.</li>' +
       '</ol>' +
+      imgAnno('1b-odoo-smartbutton.png', 'Smart button "BP Template" su sale.order di Odoo', [
+        { x: 65, y: 65, label: 'Smart button "BP Template" sulla sale.order: click apre direttamente l\'offerta su BP Template, con il numero preventivo/ordine gi&agrave; popolato' },
+      ]) +
       '<div class="guida-callout guida-info">' +
         '<i class="fas fa-info-circle"></i>' +
         '<div><strong>Primo accesso?</strong> L\'app riconosce la tua utenza Odoo e crea il profilo locale al volo, con ruolo <code>user</code>. Non serve che l\'amministratore ti registri prima.</div>' +
       '</div>' +
+      '<div class="guida-callout guida-info">' +
+        '<i class="fas fa-shield-alt"></i>' +
+        '<div><strong>Hai l\'autenticazione a 2 fattori (2FA) attiva su Odoo?</strong> Dopo aver inserito email e password apparir&agrave; un secondo campo <strong>"Codice 2FA"</strong>: inserisci il codice di 6 cifre dal tuo Authenticator (lo stesso che usi su Odoo) e clicca <strong>Conferma 2FA</strong>. &Egrave; richiesto solo al primo accesso o dopo aver cambiato la password Odoo; le sessioni successive entrano direttamente per 7 giorni.</div>' +
+      '</div>' +
+      imgAnno('1c-login-2fa.png', 'Form di login con campo 2FA visibile', [
+        { x: 50, y: 55, label: 'Campo Codice 2FA (6 cifre): appare automaticamente solo per gli utenti con 2FA Odoo attivo' },
+        { x: 50, y: 73, label: 'Pulsante "Conferma 2FA" dopo aver digitato il codice dell\'Authenticator' },
+      ]) +
       '<h3>Ruoli</h3>' +
       '<ul>' +
         '<li><strong>user</strong> — vede solo le proprie offerte, le crea, modifica, elimina.</li>' +
-        '<li><strong>supervisore</strong> — vede tutte le offerte, può approvare/rifiutare richieste sconto.</li>' +
-        '<li><strong>admin</strong> — gestisce utenti, vede l\'audit log, può eliminare offerte di chiunque.</li>' +
+        '<li><strong>viewer</strong> — vede tutte le offerte in archivio (anche di altri utenti) in sola lettura. NON pu&ograve; approvare sconti/PI, NON pu&ograve; modificare o eliminare offerte di altri. Pensato per chi fa controllo gestione o reportistica trasversale.</li>' +
+        '<li><strong>supervisore</strong> — vede tutte le offerte, pu&ograve; approvare/rifiutare richieste sconto e prezzo imposto.</li>' +
+        '<li><strong>admin</strong> — gestisce utenti, vede l\'audit log, pu&ograve; eliminare offerte di chiunque.</li>' +
       '</ul>' +
       '<h3>Cambio password al primo accesso</h3>' +
       '<p>Se l\'admin ti crea l\'utenza manualmente (caso raro), al primo login ti viene chiesto di cambiare la password. Se invece accedi via SSO Odoo, questo passaggio è saltato.</p>' +
@@ -157,16 +176,16 @@ function renderGuida(){
         '<li><strong>Manutenzione</strong> — stessa struttura dei materiali</li>' +
         '<li><strong>Trasferte</strong> — persone, giorni, costo giornata, vitto, alloggio, km, EUR/km</li>' +
       '</ol>' +
-      '<p>Per ogni riga il <strong>markup %</strong> determina il Prezzo Vendita e di conseguenza il Margine, calcolati in tempo reale. Le righe vuote (tutte a zero) vengono saltate da PDF e Excel.</p>' +
+      '<p>Il <strong>markup %</strong> &egrave; un campo presente in <strong>ogni riga</strong> e determina il Prezzo Vendita della riga (e quindi il Margine), in tempo reale. Le righe vuote (tutte a zero) vengono saltate da PDF e Excel.</p>' +
       '<div class="guida-callout guida-warn">' +
         '<i class="fas fa-lock"></i>' +
-        '<div><strong>Markup non modificabile per il commerciale</strong>: gli utenti con ruolo <code>user</code> vedono il campo <strong>Markup %</strong> in grigio (readonly). I default applicati sono: <strong>Manodopera 35%</strong>, <strong>Materiali 25%</strong>, <strong>Servizi 20%</strong>, <strong>Manutenzione 25%</strong>, <strong>Trasferte 10%</strong>. Solo <strong>supervisore</strong> e <strong>admin</strong> possono modificarli.</div>' +
+        '<div><strong>Il markup non &egrave; modificabile dal commerciale</strong>: per gli utenti con ruolo <code>user</code> il campo <strong>Markup %</strong> &egrave; readonly (grigio). Quando si aggiunge una nuova riga, il markup viene pre-popolato con il valore predefinito per la sezione: <strong>Manodopera 35%</strong>, <strong>Materiali 25%</strong>, <strong>Servizi 20%</strong>, <strong>Manutenzione 25%</strong>, <strong>Trasferte 10%</strong>. Solo <strong>supervisore</strong> e <strong>admin</strong> possono modificarlo, e lo fanno <strong>per singola riga</strong>: non esiste un\'impostazione globale a livello di sezione.</div>' +
       '</div>' +
       '<h3>Pulsante "Aggiungi riga"</h3>' +
       '<p>Sotto ogni tabella. La riga rossa <code>x</code> a destra elimina.</p>' +
       imgAnno('3b-calcolo.png', 'Tabella manodopera con calcoli live', [
         { x: 23, y: 22, label: 'Categoria CCNL: il costo orario si compila automaticamente' },
-        { x: 67, y: 22, label: 'Markup % — la percentuale che imposti tu' },
+        { x: 67, y: 22, label: 'Markup % — pre-popolato per sezione, modificabile solo da admin/supervisore (per il ruolo user il campo è readonly)' },
         { x: 79, y: 22, label: 'Prezzo Vendita e Margine calcolati in tempo reale' },
         { x: 18, y: 32, label: 'Riga TOTALE di sezione, ben visibile per controllo a colpo d\'occhio' },
       ]) +
@@ -320,7 +339,7 @@ function renderGuida(){
         '<li>Stampa: già configurato fit-to-page con header e numerazione pagine</li>' +
       '</ul>' +
       '<h3>Riprendere gli allegati da Odoo</h3>' +
-      '<p>Sulla Vendita in Odoo, sezione <strong>Allegati</strong>, trovi due file con nome <code>BP Template DDMMYYYY.pdf</code> e <code>.xlsx</code>. Sono visibili a chiunque abbia accesso alla Vendita.</p>' +
+      '<p>Sulla Vendita in Odoo, sezione <strong>Allegati</strong>, trovi due file con prefisso <code>VEN_&lt;numero ordine&gt;_BP</code> ed estensione <code>.pdf</code> / <code>.xlsx</code> (es. <code>VEN_S04134_BP _2026-05-18.pdf</code>). Sono visibili a chiunque abbia accesso alla Vendita.</p>' +
     '</section>';
 
   return renderTopnav('guida') +
