@@ -170,7 +170,7 @@ function bp_pdf_archivio(array $lista): string {
         $margP  = round((float)($o['mP'] ?? 0), 1);
         $totRicavi += $ricavi; $totCosti += $costi; $totMargineE += $margE;
         $bg = $idx % 2 === 0 ? '#ffffff' : '#eef4fb';
-        $mColor = $margP >= 20 ? '#15803d' : ($margP >= 10 ? '#ca8a04' : '#dc2626');
+        $mColor = $margP >= BP_MARGINE_GREEN ? '#15803d' : ($margP >= BP_MARGINE_YELLOW ? '#ca8a04' : '#dc2626');
         $data = $o['data'] ?? '';
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $data, $m)) $data = $m[3] . '/' . $m[2] . '/' . $m[1];
         $rows .= '<tr style="background:' . $bg . '">'
@@ -195,7 +195,7 @@ function bp_pdf_archivio(array $lista): string {
             . '<td class="right">' . bp_fmt_pct($totMargineP) . '%</td>'
             . '</tr>';
 
-    $kpiMarginColor = $totMargineP >= 20 ? '#15803d' : ($totMargineP >= 10 ? '#ca8a04' : '#dc2626');
+    $kpiMarginColor = $totMargineP >= BP_MARGINE_GREEN ? '#15803d' : ($totMargineP >= BP_MARGINE_YELLOW ? '#ca8a04' : '#dc2626');
     $kpiBox = '<table class="kpi-bar"><tr>'
             . '<td class="kpi"><div class="kpi-label">Offerte</div><div class="kpi-value">' . count($lista) . '</div></td>'
             . '<td class="kpi"><div class="kpi-label">Ricavi totali</div><div class="kpi-value">€ ' . bp_fmt($totRicavi) . '</div></td>'

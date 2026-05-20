@@ -4,7 +4,15 @@
  *
  * SOURCE OF TRUTH: questa funzione DEVE rimanere allineata con js/calc.js (calcAll).
  * Cambi alla formula vanno applicati in entrambi i file.
+ *
+ * Soglie semaforo margine % (allineate a js/calc.js MARGINE_THRESHOLDS):
+ *  >= BP_MARGINE_GREEN  -> verde
+ *  >= BP_MARGINE_YELLOW -> giallo
+ *  altrimenti           -> rosso
+ * Usate da bp_mail_color_margine (mailer.php), conditional formatting Excel, KPI PDF.
  */
+const BP_MARGINE_GREEN  = 20;
+const BP_MARGINE_YELLOW = 10;
 
 function bp_pf($v): float {
     return (float)($v ?? 0);
@@ -62,7 +70,12 @@ function bp_calc_all(array $f): array {
     $tC  = $tCP + $tCM + $tCS + $tCM2 + $tCT;
     $tVL = $tVP + $tVM + $tVS + $tVM2 + $tVT;
     $sg  = $tC * (bp_pf($f['speseGenerali'] ?? 5) / 100);
-    $tF  = $tVL + $sg;
+    // Overmarkup (0..30, step 5): maggiorazione sui ricavi che NON tocca le spese generali.
+    // tVL_finale = tVL * (1 + overmarkup/100). Vedi anche calcAll in js/calc.js.
+    $overmarkup       = (int)($f['overmarkup'] ?? 0);
+    $overmarkupValore = $tVL * ($overmarkup / 100);
+    $tVLfinale        = $tVL + $overmarkupValore;
+    $tF  = $tVLfinale + $sg;
 
     $scontoApp = ($f['scontoStato'] ?? '') === 'approvato' ? bp_pf($f['scontoValore'] ?? 0) : 0;
     $scontoE   = ($f['scontoTipo'] ?? 'pct') === 'pct' ? $tF * ($scontoApp / 100) : $scontoApp;
@@ -79,5 +92,6 @@ function bp_calc_all(array $f): array {
 
     return compact('cp','cm','cs','cm2','ct',
                    'tCP','tVP','tCM','tVM','tCS','tVS','tCM2','tVM2','tCT','tVT',
-                   'tC','tVL','sg','tF','tFCalc','mECalc','mPCalc','tFSconto','scontoE','mE','mP','prezzoImpostoOk');
+                   'tC','tVL','tVLfinale','overmarkup','overmarkupValore',
+                   'sg','tF','tFCalc','mECalc','mPCalc','tFSconto','scontoE','mE','mP','prezzoImpostoOk');
 }

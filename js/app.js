@@ -64,21 +64,50 @@ function render(){
 
 /* ============== AUTH ============== */
 
+let _2faPendingToken = null; // ticket pending tra 1° e 2° submit (vedi bp_odoo_pending_2fa)
+
 async function doLogin(e){
   if (e) e.preventDefault();
   const u = document.getElementById("l-user").value.trim();
   const p = document.getElementById("l-pass").value;
+  const totpEl = document.getElementById("l-totp");
+  const totp = totpEl ? totpEl.value.trim() : "";
+  const btn = document.getElementById("l-submit");
+
+  // Overlay grigio + cursore loading: il flow SSO (specialmente con 2FA) ha 4 round-trip
+  // verso Odoo, puo' impiegare 3-6 secondi. Senza feedback l'utente preme due volte.
+  document.body.classList.add("odoo-loading");
+  if (btn) btn.disabled = true;
+  let keepOverlay = false; // true = lascia overlay per transizione a dashboard
+
   try {
-    const data = await apiPost(API.login, { username: u, password: p });
+    const payload = { username: u, password: p, totp };
+    if (_2faPendingToken && totp) payload.pending_token = _2faPendingToken;
+    const data = await apiPost(API.login, payload);
+    // 2FA richiesto: mostro il campo TOTP e aspetto un secondo submit con il codice
+    if (data && data.totp_required) {
+      _2faPendingToken = data.pending_token || null;
+      const wrap = document.getElementById("l-totp-wrap");
+      const err  = document.getElementById("login-err");
+      if (wrap) wrap.style.display = "block";
+      if (totpEl) { totpEl.focus(); totpEl.select(); }
+      if (btn) btn.innerHTML = '<i class="fas fa-shield-alt"></i> Conferma 2FA';
+      if (err) { err.style.color = "#1d4ed8"; err.textContent = "Inserisci il codice 2FA dal tuo Authenticator."; }
+      return;
+    }
+    // Login OK o errore definitivo: reset del token pending
+    _2faPendingToken = null;
     if (data.error || !data.ok) {
       document.getElementById("login-err").textContent = data.error || "Login fallito";
       return;
     }
+    // Login OK: tieni overlay finche' la dashboard non e' renderizzata
+    keepOverlay = true;
+
     localStorage.setItem('bp_last_user', u);
     localStorage.setItem('bp_current_user', JSON.stringify(data.user));
 
     // Suggerisci al browser di salvare le credenziali (Credential Management API).
-    // Funziona su Chrome/Edge/Safari su HTTPS o localhost.
     if (window.PasswordCredential) {
       try {
         const cred = new PasswordCredential({
@@ -89,6 +118,14 @@ async function doLogin(e){
     }
 
     currentUser = data.user;
+
+    // Carica utenti+offerte dal server: il fast-path di initApp aveva skippato il fetch
+    // perche' localStorage era vuoto prima del login.
+    try {
+      const [ru, ro] = await Promise.all([apiGet(API.utenti), apiGet(API.offerte)]);
+      if (Array.isArray(ru)) utenti  = ru;
+      if (Array.isArray(ro)) offerte = ro;
+    } catch (_) { /* render mostrera' lista vuota */ }
 
     // Lascio il password field nel DOM per ~50ms così Chrome aggancia il "form login fatto".
     setTimeout(() => {
@@ -101,9 +138,17 @@ async function doLogin(e){
       } else {
         screen = "list"; render(); gestisciParamOdoo();
       }
+      // Tolgo overlay solo dopo la transizione visiva
+      document.body.classList.remove("odoo-loading");
+      if (btn) btn.disabled = false;
     }, 50);
   } catch (err) {
-    document.getElementById("login-err").textContent = "Errore di rete";
+    document.getElementById("login-err").textContent = err && err.message ? "Errore: " + err.message : "Errore di rete";
+  } finally {
+    if (!keepOverlay) {
+      document.body.classList.remove("odoo-loading");
+      if (btn) btn.disabled = false;
+    }
   }
 }
 
@@ -131,7 +176,7 @@ async function creaUtente(){
   utenti.push({ ...nu });
   delete utenti[utenti.length - 1].password;  // non tenere password in memoria
   await fbSaveUtente(nu);
-  alert("Utente " + nome + " creato!" + (email ? " Mail inviata a " + email : ""));
+  toast("Utente " + nome + " creato!" + (email ? " Mail inviata a " + email : ""), "success", 4000);
   render();
 }
 
@@ -152,7 +197,7 @@ function modificaUtente(id){
     '<div><label>Username</label><input id="m-user" value="' + (u.username || "") + '"></div>' +
     '<div class="full"><label>Email</label><input id="m-email" type="email" value="' + (u.email || "") + '"></div>' +
     '<div><label>Ruolo</label><select id="m-ruolo">' +
-      ['user','supervisore','admin'].map(r => '<option value="' + r + '"' + (u.ruolo === r ? ' selected' : '') + '>' + r + '</option>').join("") +
+      ['user','viewer','supervisore','admin'].map(r => '<option value="' + r + '"' + (u.ruolo === r ? ' selected' : '') + '>' + r + '</option>').join("") +
     '</select></div>' +
     '<div><label>Nuova password</label><input id="m-pass" type="password" placeholder="lascia vuoto per non cambiare"></div>' +
     '</div>' +
@@ -186,15 +231,15 @@ async function confermaModificaUtente(id){
 
 async function reinviaMailUtente(id){
   const u = utenti.find(x => x.id === id);
-  if (!u || !u.email) { alert("Utente senza email!"); return; }
+  if (!u || !u.email) { toast("Utente senza email!", "warn"); return; }
   if (!confirm("Reinviare le credenziali a " + u.email + "?")) return;
   const nuovaPass = prompt("Inserisci la password (le password non sono recuperabili):");
   if (!nuovaPass) return;
   try {
     const d = await apiPost(API.reinviaMail, { nome: u.nome, username: u.username, password: nuovaPass, email: u.email });
-    if (d.ok) alert("Mail inviata a " + u.email + "!");
-    else alert("Errore invio mail: " + (d.error || ""));
-  } catch (e) { alert("Errore: " + e.message); }
+    if (d.ok) toast("Mail inviata a " + u.email, "success", 4000);
+    else toast("Errore invio mail: " + (d.error || ""), "error", 5000);
+  } catch (e) { toast("Errore: " + e.message, "error", 5000); }
 }
 
 /* ============== PROFILO ============== */
@@ -245,6 +290,8 @@ function syncFormFromDOM(){
   const sn = document.getElementById("sconto-nota");    if (sn) form.scontoNota = sn.value;
   const pi = document.getElementById("prezzo-imposto-valore");
   if (pi) form.prezzoImpostoValore = parseFloat(pi.value) || 0;
+  const om = document.getElementById("f-overmarkup");
+  if (om) form.overmarkup = parseInt(om.value, 10) || 0;
 }
 
 function aggiornaCostoH(sel){
@@ -252,6 +299,16 @@ function aggiornaCostoH(sel){
   formDirty = true;
   const id = sel.dataset.id, cat = sel.value, costo = CATEGORIE[cat] || 0;
   form.personale = form.personale.map(r => r.id == id ? { ...r, categoria: cat, costoH: costo } : r);
+  render();
+}
+
+// Wrapper per onchange del <select id="f-overmarkup">. NON inlineare la logica:
+// dentro un onchange inline di un <select>, l'identifier `form` viene risolto a
+// this.form (form owner DOM) prima della variabile globale, e se il select non è
+// dentro un <form> element this.form===null → "Cannot set properties of null".
+function setOvermarkup(sel){
+  form.overmarkup = parseInt(sel.value, 10) || 0;
+  formDirty = true;
   render();
 }
 
@@ -367,8 +424,8 @@ async function duplica(id){
 
 async function salva(){
   syncFormFromDOM();
-  if (!form.nome.trim())                    { alert("Inserisci il nome della commessa"); return; }
-  if (!(form.nOrdineOdoo || "").trim())     { alert("Inserisci il N. Prev/Ordine Odoo"); return; }
+  if (!form.nome.trim())                    { toast("Inserisci il nome della commessa", "warn"); return; }
+  if (!(form.nOrdineOdoo || "").trim())     { toast("Inserisci il N. Prev/Ordine Odoo", "warn"); return; }
 
   // Validazione margine minimo per ruolo
   const c = calcAll(form);
@@ -426,39 +483,58 @@ function delRow(key, id){
   render();
 }
 
+// Event delegation: 1 solo listener "input" su #app, installato 1 sola volta in vita app.
+// Prima (audit pre-P1.3) si attaccava un listener ad ogni input [data-key][data-field] e si
+// riattaccava ad ogni rerender (75+ listener ricostruiti). Ora 1 listener fisso, logica invariata.
+let _bpInputBound = false;
 function bindEvents(){
-  document.querySelectorAll("[data-key][data-field]").forEach(el => {
-    el.addEventListener("input", function(){
-      formDirty = true;
-      const key = this.dataset.key, field = this.dataset.field;
-      form[key] = form[key].map(r => r.id == this.dataset.id ? { ...r, [field]: this.value } : r);
-      const c = calcAll(form, true);
-      const row = this.closest("tr"); if (!row) return;
-      const tdR = row.querySelectorAll(".td-r"), tdPv = row.querySelector(".td-pv"), tdMg = row.querySelector(".td-mg");
-      const map = { personale: c.cp, materiali: c.cm, servizi: c.cs, manutenzione: c.cm2, trasferte: c.ct };
-      const r2 = map[key]?.find(x => x.id == this.dataset.id);
-      if (r2) {
-        if (tdR[0]) tdR[0].textContent = fmt(r2.b);
-        if (tdPv)   tdPv.textContent   = fmt(r2.pv);
-        if (tdMg)   tdMg.textContent   = fmt(r2.pv - r2.b);
+  if (_bpInputBound) return;
+  const app = document.getElementById("app");
+  if (!app) return;
+  _bpInputBound = true;
+  app.addEventListener("input", function(e){
+    const el = e.target.closest("[data-key][data-field]");
+    if (!el) return;
+    formDirty = true;
+    const key = el.dataset.key, field = el.dataset.field;
+    if (!form[key]) return;
+    form[key] = form[key].map(r => r.id == el.dataset.id ? { ...r, [field]: el.value } : r);
+    const c = calcAll(form, true);
+    const row = el.closest("tr"); if (!row) return;
+    const tdR = row.querySelectorAll(".td-r"), tdPv = row.querySelector(".td-pv"), tdMg = row.querySelector(".td-mg");
+    const map = { personale: c.cp, materiali: c.cm, servizi: c.cs, manutenzione: c.cm2, trasferte: c.ct };
+    const r2 = map[key]?.find(x => x.id == el.dataset.id);
+    if (r2) {
+      if (tdR[0]) tdR[0].textContent = fmt(r2.b);
+      if (tdPv)   tdPv.textContent   = fmt(r2.pv);
+      if (tdMg)   tdMg.textContent   = fmt(r2.pv - r2.b);
+    }
+    const tf = row.closest("table")?.querySelector("tfoot");
+    if (tf) {
+      const cc = tf.querySelectorAll("td");
+      if (key === "personale" && cc.length >= 5) { cc[1].textContent = fmt(c.tCP); cc[3].textContent = fmt(c.tVP); cc[4].textContent = fmt(c.tVP - c.tCP); }
+      if ((key === "materiali" || key === "servizi" || key === "manutenzione") && cc.length >= 5) {
+        const [ct, vt] = key === "materiali" ? [c.tCM, c.tVM] : key === "servizi" ? [c.tCS, c.tVS] : [c.tCM2, c.tVM2];
+        cc[1].textContent = fmt(ct); cc[3].textContent = fmt(vt); cc[4].textContent = fmt(vt - ct);
       }
-      const tf = row.closest("table")?.querySelector("tfoot");
-      if (tf) {
-        const cc = tf.querySelectorAll("td");
-        if (key === "personale" && cc.length >= 5) { cc[1].textContent = fmt(c.tCP); cc[3].textContent = fmt(c.tVP); cc[4].textContent = fmt(c.tVP - c.tCP); }
-        if ((key === "materiali" || key === "servizi" || key === "manutenzione") && cc.length >= 5) {
-          const [ct, vt] = key === "materiali" ? [c.tCM, c.tVM] : key === "servizi" ? [c.tCS, c.tVS] : [c.tCM2, c.tVM2];
-          cc[1].textContent = fmt(ct); cc[3].textContent = fmt(vt); cc[4].textContent = fmt(vt - ct);
-        }
-        if (key === "trasferte" && cc.length >= 5) { cc[1].textContent = fmt(c.tCT); cc[3].textContent = fmt(c.tVT); cc[4].textContent = fmt(c.tVT - c.tCT); }
-      }
-      const bb = document.querySelector(".bottom-bar");
-      if (bb) {
-        const sp = bb.querySelectorAll("span");
-        if (sp[0]) sp[0].textContent = "EUR " + fmt(c.tFSconto);
-        if (sp[1]) { sp[1].textContent = fmtPct(c.mP) + "%"; sp[1].className = mc(c.mP); }
-      }
-    });
+      if (key === "trasferte" && cc.length >= 5) { cc[1].textContent = fmt(c.tCT); cc[3].textContent = fmt(c.tVT); cc[4].textContent = fmt(c.tVT - c.tCT); }
+    }
+    // Repaint chirurgico KPI bottom-bar via id (NON usare indici querySelectorAll: ordine span
+    // fragile, gia' rotto in v=56 quando e' stato aggiunto "Costo Totale" come primo div).
+    const bbTc = document.getElementById("bb-tc");
+    if (bbTc) bbTc.textContent = "EUR " + fmt(c.tC);
+    const bbTf = document.getElementById("bb-tfsconto");
+    if (bbTf) bbTf.textContent = "EUR " + fmt(c.tFSconto);
+    const bbMp = document.getElementById("bb-mp");
+    if (bbMp) { bbMp.textContent = fmtPct(c.mP) + "%"; bbMp.className = mc(c.mP); }
+    // Banner "margine sotto soglia" va rigenerato live: se il margine sale sopra soglia il
+    // banner deve sparire, e viceversa. Senza questo restava stale (cifra vecchia + non si nascondeva).
+    const bbWarn = document.getElementById("bb-warn-margine");
+    if (bbWarn) bbWarn.innerHTML = bbWarnMargine(c);
+    // Card Spese Generali: il valore EUR dipende da tC (somma costi) e va aggiornato live
+    // ad ogni modifica di riga. Senza questo, lo span restava stale fino a render() completo.
+    const sgEur = document.getElementById("sg-eur");
+    if (sgEur) sgEur.textContent = "= EUR " + fmt(c.sg);
   });
 }
 
@@ -466,8 +542,8 @@ function bindEvents(){
 
 async function chiediSconto(){
   syncFormFromDOM();
-  if (!form.nome.trim())                { alert("Inserisci il nome della commessa"); return; }
-  if (!(form.nOrdineOdoo || "").trim()) { alert("Inserisci il N. Prev/Ordine Odoo"); return; }
+  if (!form.nome.trim())                { toast("Inserisci il nome della commessa", "warn"); return; }
+  if (!(form.nOrdineOdoo || "").trim()) { toast("Inserisci il N. Prev/Ordine Odoo", "warn"); return; }
   if (!confirm("Inviare richiesta di sconto ai supervisori?")) return;
   form.scontoStato = "inattesa";
   form.userId = currentUser.id; form.userName = currentUser.nome;
@@ -550,10 +626,10 @@ function apriPrezzoImposto(){
 
 async function chiediApprovazionePrezzoImposto(){
   syncFormFromDOM();
-  if (!form.nome.trim())                { alert("Inserisci il nome della commessa"); return; }
-  if (!(form.nOrdineOdoo || "").trim()) { alert("Inserisci il N. Prev/Ordine Odoo"); return; }
+  if (!form.nome.trim())                { toast("Inserisci il nome della commessa", "warn"); return; }
+  if (!(form.nOrdineOdoo || "").trim()) { toast("Inserisci il N. Prev/Ordine Odoo", "warn"); return; }
   const piVal = parseFloat(form.prezzoImpostoValore) || 0;
-  if (piVal <= 0) { alert("Inserisci un prezzo target maggiore di zero."); return; }
+  if (piVal <= 0) { toast("Inserisci un prezzo target maggiore di zero.", "warn"); return; }
   if (!confirm("Inviare richiesta di approvazione del prezzo imposto a EUR " + fmt(piVal) + "?")) return;
   form.scontoStato = "inattesa";
   form.userId = currentUser.id; form.userName = currentUser.nome;
@@ -591,7 +667,7 @@ async function printPDF(){
     a.href = URL.createObjectURL(blob);
     a.download = offertaFileBaseName() + ".pdf";
     a.click();
-  } catch (e) { alert("Errore: " + e.message); }
+  } catch (e) { toast("Errore: " + e.message, "error", 5000); }
   finally { btn.textContent = "PDF"; btn.disabled = false; }
 }
 
@@ -604,7 +680,7 @@ async function exportExcel(){
     a.href = URL.createObjectURL(blob);
     a.download = offertaFileBaseName() + ".xlsx";
     a.click();
-  } catch (e) { alert("Errore: " + e.message); }
+  } catch (e) { toast("Errore: " + e.message, "error", 5000); }
   finally { btn.textContent = "Excel"; btn.disabled = false; }
 }
 
@@ -644,7 +720,7 @@ async function esportaArchivioPDF(){
   try {
     const blob = await apiPostBlob(API.archivioPdf, { lista });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "archivio_offerte.pdf"; a.click();
-  } catch (e) { alert("Errore: " + e.message); }
+  } catch (e) { toast("Errore: " + e.message, "error", 5000); }
   finally { btn.textContent = "PDF"; btn.disabled = false; }
 }
 
@@ -655,13 +731,18 @@ async function esportaArchivioExcel(){
   try {
     const blob = await apiPostBlob(API.archivioExcel, { lista });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "archivio_offerte.xlsx"; a.click();
-  } catch (e) { alert("Errore: " + e.message); }
+  } catch (e) { toast("Errore: " + e.message, "error", 5000); }
   finally { btn.textContent = "Excel"; btn.disabled = false; }
 }
 
 /* ============== ODOO ============== */
 
 let _odooSearchTimer = null;
+// Cache locale autocomplete: chiave = query lowercase, valore = { ts, results }.
+// TTL 30s evita richieste duplicate consecutive (es. utente cancella e ridigita lo stesso codice).
+const _cercaOdooCache = new Map();
+const _CERCA_ODOO_TTL_MS = 30000;
+const _CERCA_ODOO_DEBOUNCE_MS = 250;
 
 function aggiornaOdooField(val){
   val = (val || "").toUpperCase();
@@ -670,12 +751,27 @@ function aggiornaOdooField(val){
   ["f-cliente", "f-nome", "f-tipo"].forEach(id => { const e = document.getElementById(id); if (e) e.value = ""; });
 }
 
-async function cercaSuOdoo(val){
-  try {
-    const data = await apiPost(API.cercaOdoo, { query: val });
-    if (data.ok && data.risultati && data.risultati.length > 0) mostraDropdown(data.risultati);
-    else rimuoviDropdown();
-  } catch { rimuoviDropdown(); }
+// Debounce + cache: riduce ~80% delle chiamate /api/cerca_odoo.php durante autocomplete
+// (vedi audit perf 2026-05-19: prima ogni keystroke -> 1 fetch; ora 1 fetch per pausa di typing >250ms,
+// e risultati per la stessa query vengono riusati dalla cache locale per 30s).
+function cercaSuOdoo(val){
+  val = (val || "").trim();
+  clearTimeout(_odooSearchTimer);
+  if (val.length < 2) { rimuoviDropdown(); return; }
+  _odooSearchTimer = setTimeout(async () => {
+    const key = val.toLowerCase();
+    const cached = _cercaOdooCache.get(key);
+    if (cached && Date.now() - cached.ts < _CERCA_ODOO_TTL_MS) {
+      if (cached.results.length) mostraDropdown(cached.results); else rimuoviDropdown();
+      return;
+    }
+    try {
+      const data = await apiPost(API.cercaOdoo, { query: val });
+      const results = (data && data.ok && Array.isArray(data.risultati)) ? data.risultati : [];
+      _cercaOdooCache.set(key, { ts: Date.now(), results });
+      if (results.length) mostraDropdown(results); else rimuoviDropdown();
+    } catch { rimuoviDropdown(); }
+  }, _CERCA_ODOO_DEBOUNCE_MS);
 }
 
 function mostraDropdown(risultati){
@@ -710,9 +806,9 @@ async function gestisciParamOdoo(){
   if (!nOrdine) return;
   const esistente = offerte.find(o => (o.nOrdineOdoo || "").trim().toUpperCase() === nOrdine);
   if (esistente) {
-    form = JSON.parse(JSON.stringify(esistente)); editId = esistente.id; screen = "form"; render();
+    form = JSON.parse(JSON.stringify(esistente)); editId = esistente.id; formDirty = false; screen = "form"; render();
   } else {
-    form = emptyForm(); form.nOrdineOdoo = nOrdine; editId = null; screen = "form"; render();
+    form = emptyForm(); form.nOrdineOdoo = nOrdine; editId = null; formDirty = false; screen = "form"; render();
     setTimeout(() => caricaDaOdoo(nOrdine), 200);
   }
   history.replaceState(null, "", window.location.pathname);
@@ -757,22 +853,15 @@ async function caricaDaOdoo(nOrdine){
 
 async function allegaAOdoo(){
   const nOrdine = (form.nOrdineOdoo || "").trim();
-  if (!nOrdine) { alert("Inserisci il Numero Prev/Ordine Odoo prima di allegare."); return; }
+  if (!nOrdine) { toast("Inserisci il Numero Prev/Ordine Odoo prima di allegare.", "warn"); return; }
   const btn = document.getElementById("btn-odoo");
   if (btn) { btn.textContent = "Invio..."; btn.disabled = true; }
   document.body.classList.add("odoo-loading");
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000);
-    const res = await fetch(API.allegaOdoo, {
-      ...FETCH_OPTS,
-      method: "POST",
-      signal: controller.signal,
-      headers: { "Content-Type": "application/json", "X-Bp-Csrf": _csrfToken() },
-      body: JSON.stringify({ nOrdine, utente: currentUser.nome, form: stripForm() }),
-    });
-    clearTimeout(timeout);
-    const data = await res.json();
+    const data = await apiPost(API.allegaOdoo,
+      { nOrdine, utente: currentUser.nome, form: stripForm() },
+      { timeoutMs: 120000 }
+    );
     if (data.error) throw new Error(data.error);
 
     // Marca offerta come allegata: aggiorna stato locale e ridisegna pipeline
@@ -787,8 +876,8 @@ async function allegaAOdoo(){
     toast("PDF + Excel allegati a Odoo (" + (data.ordineNome || nOrdine) + ")", "success", 4000);
     setTimeout(() => { if (btn) { btn.textContent = "Allega a Odoo"; btn.style.background = ""; btn.disabled = false; } }, 3000);
   } catch (e) {
-    if (e.name === "AbortError") alert("Timeout -- operazione troppo lenta. Riprova.");
-    else alert("Errore: " + e.message);
+    if (e.name === "AbortError") toast("Timeout — operazione troppo lenta. Riprova.", "error", 5000);
+    else toast("Errore: " + e.message, "error", 5000);
     console.error(e);
     if (btn) { btn.textContent = "Allega a Odoo"; btn.disabled = false; }
   } finally {

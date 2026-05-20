@@ -6,9 +6,12 @@ $method = $_SERVER['REQUEST_METHOD'];
 $me     = bp_require_auth();
 $actor  = $me;
 
-// Helper: utenti con ruolo 'admin' o 'supervisore' vedono tutto.
-// Gli 'user' possono leggere/scrivere solo le proprie offerte.
-$canSeeAll = in_array($me['ruolo'], ['admin', 'supervisore'], true);
+// Helper: utenti con ruolo 'admin', 'supervisore' o 'viewer' vedono tutte le offerte.
+// 'viewer' e' un ruolo read-only sopra-utenti (vede tutto, NON approva, NON elimina altrui).
+// Gli 'user' vedono e modificano solo le proprie offerte.
+$canSeeAll = in_array($me['ruolo'], ['admin', 'supervisore', 'viewer'], true);
+// Chi puo' MODIFICARE offerte di chiunque: solo admin/supervisore (NON viewer).
+$canWriteAll = in_array($me['ruolo'], ['admin', 'supervisore'], true);
 
 if ($method === 'GET') {
     $lista = bp_offerte_all();
@@ -27,18 +30,18 @@ if ($method === 'POST') {
         bp_json_out(['error' => 'id e nome obbligatori'], 400);
     }
 
-    // Verifica permessi su offerta esistente: solo owner o admin/supervisore
+    // Verifica permessi su offerta esistente: solo owner o admin/supervisore (NO viewer)
     $stmt = bp_db()->prepare("SELECT user_id FROM offerte WHERE id = :id");
     $stmt->execute(['id' => $d['id']]);
     $existing = $stmt->fetch();
     if ($existing) {
-        if (!$canSeeAll && ($existing['user_id'] ?? '') !== $me['id']) {
+        if (!$canWriteAll && ($existing['user_id'] ?? '') !== $me['id']) {
             bp_audit('forbidden', 'offerte', $d['id'], 'tentativo modifica offerta altrui');
             bp_json_out(['error' => 'Non puoi modificare offerte di altri utenti'], 403);
         }
     } else {
         // Nuova offerta: l'utente non admin/sup non può falsificare userId
-        if (!$canSeeAll) {
+        if (!$canWriteAll) {
             $d['userId']   = $me['id'];
             $d['userName'] = $me['nome'];
         }
@@ -109,7 +112,65 @@ if ($method === 'POST') {
         }
     }
 
+    // Validazione range numerici (anti-tampering + protezione dati corrotti).
+    // Soglie ampie: tolleranti agli inserimenti reali, bloccano valori palesemente sbagliati.
+    $errs = [];
+    $spese = (float)($d['speseGenerali'] ?? 0);
+    if ($spese < 0 || $spese > 100) $errs[] = "Spese generali fuori range (0-100): $spese";
+    $sezioni = ['personale', 'materiali', 'servizi', 'manutenzione', 'trasferte'];
+    foreach ($sezioni as $sec) {
+        if (empty($d[$sec]) || !is_array($d[$sec])) continue;
+        foreach ($d[$sec] as $i => $r) {
+            $mk = (float)($r['markup'] ?? 0);
+            if ($mk < 0 || $mk > 500) $errs[] = "Markup $sec[$i] fuori range (0-500): $mk";
+            foreach (['oreG','costoH','qta','costoU','persone','giorni','costoGiorno','vitto','alloggio','km','costoKm'] as $fld) {
+                if (!isset($r[$fld]) || $r[$fld] === '') continue;
+                if ((float)$r[$fld] < 0) $errs[] = "$sec[$i].$fld negativo: " . $r[$fld];
+            }
+        }
+    }
+    $pi = (float)($d['prezzoImpostoValore'] ?? 0);
+    if ($pi < 0) $errs[] = "Prezzo imposto negativo: $pi";
+    $sv = (float)($d['scontoValore'] ?? 0);
+    if ($sv < 0) $errs[] = "Sconto negativo: $sv";
+    if (($d['scontoTipo'] ?? '') === 'pct' && $sv > 100) $errs[] = "Sconto % oltre 100: $sv";
+    // Overmarkup: enum {0,5,10,15,20,25,30}. Normalizzo a int e respingo valori fuori set.
+    $om = (int)($d['overmarkup'] ?? 0);
+    if (!in_array($om, [0,5,10,15,20,25,30], true)) $errs[] = "Overmarkup non valido: $om (ammessi: 0,5,10,15,20,25,30)";
+    $d['overmarkup'] = $om;
+    if (!empty($errs)) {
+        bp_audit('validation_fail', 'offerte', $d['id'], implode('; ', $errs), $me);
+        bp_json_out(['error' => 'Dati non validi: ' . $errs[0]], 400);
+    }
+
+    // Validazione margine minimo per ruolo — replica server-side di js/app.js:salva().
+    // Difesa anti-tampering: senza questo, un user puo' bypassare via DevTools la validazione
+    // client (rimuovendo il return del toast) e salvare offerte sotto soglia senza il flow
+    // di approvazione sconto direzione. Le stesse 2 regole del client:
+    //   1) PI attivo + ruolo user + non approvato -> blocco
+    //   2) margine effettivo < soglia ruolo + nessuno sconto approvato -> blocco
+    $MARGINE_MIN_RUOLO = ['user' => 15, 'viewer' => 15, 'supervisore' => 5, 'admin' => 0];
+    $minMargine = $MARGINE_MIN_RUOLO[$me['ruolo']] ?? 0;
+    $scontoApprovato = ($d['scontoStato'] ?? '') === 'approvato';
+    $piAttivo = !empty($d['prezzoImpostoAttivo']);
+
+    if ($piAttivo && !$scontoApprovato && $me['ruolo'] === 'user') {
+        bp_audit('validation_fail', 'offerte', $d['id'], 'PI attivo senza approvazione (ruolo user)', $me);
+        bp_json_out(['error' => 'Modalita\' prezzo imposto attiva: richiede approvazione supervisore prima del salvataggio. Chiedi approvazione oppure disattiva il toggle.'], 400);
+    }
+
+    $cValid = bp_calc_all($d);
+    if ($cValid['mP'] < $minMargine && !$scontoApprovato) {
+        $msg = sprintf('margine %.2f%% < soglia %d%% (ruolo %s)', $cValid['mP'], $minMargine, $me['ruolo']);
+        bp_audit('validation_fail', 'offerte', $d['id'], $msg, $me);
+        $mpFmt = number_format($cValid['mP'], 1, ',', '.');
+        bp_json_out(['error' => "Margine {$mpFmt}% sotto la soglia minima del {$minMargine}% per il tuo ruolo. Chiedi sconto direzione o rivedi costi/markup."], 400);
+    }
+
     bp_offerta_upsert($d, $actor);
+    if ($om > 0) {
+        bp_audit('overmarkup_set', 'offerte', $d['id'], "overmarkup=$om%", $actor);
+    }
     bp_json_out(['ok' => true]);
 }
 

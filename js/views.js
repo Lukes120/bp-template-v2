@@ -2,7 +2,10 @@
 // Stato globale (currentUser, utenti, offerte, form, screen, editId, filterUser) è in app.js.
 
 function badgeRuolo(ruolo){
-  return ruolo === "admin" ? "badge-admin" : ruolo === "supervisore" ? "badge-supervisore" : "badge-user";
+  if (ruolo === "admin")       return "badge-admin";
+  if (ruolo === "supervisore") return "badge-supervisore";
+  if (ruolo === "viewer")      return "badge-viewer";
+  return "badge-user";
 }
 
 function inicial(n){ return (n || "A").charAt(0).toUpperCase(); }
@@ -13,7 +16,9 @@ function renderTopnav(activeMenu){
   if (!currentUser) return '';
   const isAdmin = currentUser.ruolo === "admin";
   const isSupervisore = currentUser.ruolo === "supervisore";
-  const nInAttesa = (isAdmin || isSupervisore) ? offerte.filter(o => (o.scontoStato || "") === "inattesa").length : 0;
+  // Solo admin/supervisore approvano sconti/PI (viewer e' read-only su tutto).
+  const canApprove = isAdmin || isSupervisore;
+  const nInAttesa = canApprove ? offerte.filter(o => (o.scontoStato || "") === "inattesa").length : 0;
 
   const link = (key, label, icon, onclick) =>
     `<button class="topnav-link${activeMenu === key ? ' active' : ''}" onclick="${onclick}"><i class="fas fa-${icon}"></i>${label}</button>`;
@@ -25,7 +30,7 @@ function renderTopnav(activeMenu){
     '</button>' +
     '<div class="topnav-links">' +
       link('list', 'Offerte', 'list-ul', "screen='list';render()") +
-      ((isAdmin || isSupervisore) ? `<button class="topnav-link${activeMenu === 'approvazioni' ? ' active' : ''}" onclick="screen='approvazioni';render()"><i class="fas fa-check-circle"></i>Da approvare${nInAttesa > 0 ? `<span class="topnav-link-badge">${nInAttesa}</span>` : ''}</button>` : '') +
+      (canApprove ? `<button class="topnav-link${activeMenu === 'approvazioni' ? ' active' : ''}" onclick="screen='approvazioni';render()"><i class="fas fa-check-circle"></i>Da approvare${nInAttesa > 0 ? `<span class="topnav-link-badge">${nInAttesa}</span>` : ''}</button>` : '') +
       (isAdmin ? link('adminUsers', 'Utenti', 'users', 'apriUtenti()') : '') +
       (isAdmin ? link('audit', 'Audit', 'history', 'apriAudit()') : '') +
       link('profilo', 'Profilo', 'user-circle', "screen='profilo';render()") +
@@ -129,7 +134,11 @@ function renderLogin(){
     '<form id="login-form" method="post" action="api/login.php" autocomplete="on" onsubmit="doLogin(event)">' +
     '<input id="l-user" name="username" placeholder="Email Odoo" autocomplete="username" required value="' + (localStorage.getItem('bp_last_user') || '') + '">' +
     '<input id="l-pass" name="password" type="password" placeholder="Password Odoo" autocomplete="current-password" required>' +
-    '<button type="submit" class="btn btn-purple btn-full" style="padding:10px;font-size:.9rem;font-weight:500;margin-top:6px"><i class="fas fa-sign-in-alt"></i> Accedi</button>' +
+    '<div id="l-totp-wrap" style="display:none;margin-top:4px">' +
+      '<input id="l-totp" name="totp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="Codice 2FA (6 cifre)" style="text-align:center;letter-spacing:4px;font-size:1.1rem">' +
+      '<div style="font-size:.75rem;color:#6c757d;margin-top:6px"><i class="fas fa-shield-alt"></i> Inserisci il codice del tuo Authenticator (lo stesso che usi su Odoo).</div>' +
+    '</div>' +
+    '<button id="l-submit" type="submit" class="btn btn-purple btn-full" style="padding:10px;font-size:.9rem;font-weight:500;margin-top:6px"><i class="fas fa-sign-in-alt"></i> Accedi</button>' +
     '</form>' +
     '<div style="margin-top:18px;padding-top:14px;border-top:1px solid #e9ecef;font-size:.78rem;color:#6c757d;line-height:1.5">' +
       '<i class="fas fa-info-circle" style="color:var(--o-primary)"></i> ' +
@@ -143,8 +152,10 @@ function renderLogin(){
 function renderList(){
   const isAdmin = currentUser.ruolo === "admin";
   const isSupervisore = currentUser.ruolo === "supervisore";
+  const isViewer = currentUser.ruolo === "viewer";
+  const canSeeAll = isAdmin || isSupervisore || isViewer;
   let lista = [...offerte].reverse();
-  if (!isAdmin && !isSupervisore) lista = lista.filter(o => o.userId === currentUser.id);
+  if (!canSeeAll) lista = lista.filter(o => o.userId === currentUser.id);
   else if (filterUser !== "all") lista = lista.filter(o => o.userId === filterUser);
   if (filterText && filterText.trim() !== "") {
     const q = filterText.toLowerCase();
@@ -161,7 +172,7 @@ function renderList(){
   for (const c of calcs) { totRicavi += c.tFSconto; totCosti += c.tC; }
   const totMargineE = totRicavi - totCosti;
   const totMargineP = totRicavi > 0 ? (totMargineE / totRicavi) * 100 : 0;
-  const mpClass = p => p >= 20 ? "dash-mp-green" : p >= 10 ? "dash-mp-yellow" : "dash-mp-red";
+  const mpClass = p => p >= MARGINE_THRESHOLDS.green ? "dash-mp-green" : p >= MARGINE_THRESHOLDS.yellow ? "dash-mp-yellow" : "dash-mp-red";
 
   const rows = lista.map((o, i) => {
     const c = calcs[i]; const ut = utenti.find(u => u.id === o.userId);
@@ -169,7 +180,7 @@ function renderList(){
       '<td data-label="Commessa" style="font-weight:600;color:#1e293b;white-space:nowrap" title="' + esc(o.nome) + '">' + esc(o.nome) + '</td>' +
       '<td data-label="Cliente / Data" style="max-width:180px" title="' + esc(o.cliente || "") + '"><div style="color:#374151;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">' + esc(o.cliente || "") + '</div><div style="color:#94a3b8;font-size:.72rem">' + fmtDataIT(o.data || "") + '</div></td>' +
       '<td data-label="N. Odoo">' + (o.nOrdineOdoo ? '<span class="dash-odoo-chip">' + esc(o.nOrdineOdoo) + '</span>' : "") + (o.allegataOdoo ? ' <i class="fas fa-link" style="color:#28a745;font-size:.78rem;margin-left:4px" title="Allegata a Odoo il ' + fmtDataTimeIT(o.allegataOdoo) + '"></i>' : '') + '</td>' +
-      ((isAdmin || isSupervisore) ? '<td data-label="Utente" style="font-size:.8rem;color:#64748b;white-space:nowrap">' + esc(ut?.nome || "") + '</td>' : "") +
+      (canSeeAll ? '<td data-label="Utente" style="font-size:.8rem;color:#64748b;white-space:nowrap">' + esc(ut?.nome || "") + '</td>' : "") +
       '<td data-label="Ricavi €" style="text-align:right;font-variant-numeric:tabular-nums;font-size:.82rem;font-weight:500;color:#1e293b;white-space:nowrap">' + fmt(c.tFSconto) + '</td>' +
       '<td data-label="Costi €" style="text-align:right;font-variant-numeric:tabular-nums;font-size:.82rem;color:#94a3b8;white-space:nowrap">' + fmt(c.tC) + '</td>' +
       '<td data-label="Margine €" style="text-align:right;font-variant-numeric:tabular-nums;font-size:.82rem;font-weight:600;color:#059669;white-space:nowrap">' + fmt(c.mE) + '</td>' +
@@ -182,17 +193,17 @@ function renderList(){
       '</td></tr>';
   }).join("");
 
-  const emptyRow = '<tr><td colspan="' + (isAdmin || isSupervisore ? 9 : 8) + '" style="text-align:center;padding:40px;color:#9ca3af">Nessuna offerta presente</td></tr>';
-  const mpTotClass = totMargineP >= 20 ? "dash-mp-green" : totMargineP >= 10 ? "dash-mp-yellow" : "dash-mp-red";
+  const emptyRow = '<tr><td colspan="' + (canSeeAll ? 9 : 8) + '" style="text-align:center;padding:40px;color:#9ca3af">Nessuna offerta presente</td></tr>';
+  const mpTotClass = totMargineP >= MARGINE_THRESHOLDS.green ? "dash-mp-green" : totMargineP >= MARGINE_THRESHOLDS.yellow ? "dash-mp-yellow" : "dash-mp-red";
   const totRow = '<tr class="dash-tot-row">' +
-    '<td colspan="' + (isAdmin || isSupervisore ? 4 : 3) + '" class="tot-cell-label">TOTALI (' + lista.length + ' offerte)</td>' +
+    '<td colspan="' + (canSeeAll ? 4 : 3) + '" class="tot-cell-label">TOTALI (' + lista.length + ' offerte)</td>' +
     '<td class="tot-cell tot-cell-ricavi">' + fmt(totRicavi) + '</td>' +
     '<td class="tot-cell tot-cell-costi">' + fmt(totCosti) + '</td>' +
     '<td class="tot-cell tot-cell-margine">' + fmt(totMargineE) + '</td>' +
     '<td class="tot-cell tot-cell-mp"><span class="' + mpTotClass + '">' + fmtPct(totMargineP) + '%</span></td>' +
     '<td></td></tr>';
 
-  const filterBar = (isAdmin || isSupervisore) ?
+  const filterBar = canSeeAll ?
     '<select class="dash-filter-select" onchange="filterUser=this.value;render()"><option value="all"' + (filterUser === "all" ? " selected" : "") + '>Tutti gli utenti</option>' +
     utenti.map(u => '<option value="' + esc(u.id) + '"' + (filterUser === u.id ? " selected" : "") + '>' + esc(u.nome) + '</option>').join("") + '</select>' : '';
 
@@ -228,13 +239,13 @@ function renderList(){
     '</div>' +
     '<div class="dash-toolbar-right"></div></div>' +
     '<div class="dash-table-card"><table class="dash-table">' +
-    '<colgroup>' + (isAdmin || isSupervisore ?
+    '<colgroup>' + (canSeeAll ?
       '<col style="width:16%"><col style="width:13%"><col style="width:6%"><col style="width:7%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:6%"><col style="width:25%">' :
       '<col style="width:18%"><col style="width:15%"><col style="width:7%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:7%"><col style="width:23%">'
     ) + '</colgroup>' +
     '<thead><tr>' +
     '<th>Commessa</th><th>Cliente / Data</th><th>N. Odoo</th>' +
-    ((isAdmin || isSupervisore) ? '<th>Utente</th>' : "") +
+    (canSeeAll ? '<th>Utente</th>' : "") +
     '<th class="r">Ricavi EUR</th><th class="r">Costi EUR</th><th class="r">Margine EUR</th><th class="r">Margine %</th><th></th>' +
     '</tr></thead>' +
     '<tbody>' + (lista.length === 0 ? emptyRow : rows) + '</tbody>' +
@@ -264,7 +275,7 @@ function renderAdminUsers(){
     '<div><label>Nome</label><input id="nu-nome"></div><div><label>Username</label><input id="nu-user"></div>' +
     '<div><label>Email</label><input id="nu-email" type="email" placeholder="email@ecotelitalia.it"></div>' +
     '<div><label>Password</label><input id="nu-pass" type="password"></div>' +
-    '<div><label>Ruolo</label><select id="nu-ruolo"><option value="user">Utente</option><option value="supervisore">Supervisore</option><option value="admin">Amministratore</option></select></div>' +
+    '<div><label>Ruolo</label><select id="nu-ruolo"><option value="user">Utente</option><option value="viewer">Viewer (vede tutto, no autorizzazioni)</option><option value="supervisore">Supervisore</option><option value="admin">Amministratore</option></select></div>' +
     '</div><div id="nu-err" style="color:var(--o-danger);font-size:.78rem;margin-top:8px"></div>' +
     '<button class="btn btn-purple" style="margin-top:12px" onclick="creaUtente()"><i class="fas fa-plus"></i>Crea Utente</button></div></div>' +
     '<div class="card"><div class="sec-title admin"><i class="fas fa-users"></i>Utenti Esistenti</div><div class="card-body" style="padding:0">' + rows + '</div></div></div>';
@@ -378,6 +389,19 @@ function renderProfilo(){
 }
 
 /* ============== FORM (NUOVA/MODIFICA) ============== */
+
+// Banner warning "margine sotto soglia ruolo": HTML stringa (vuota se ok).
+// Estratto da renderForm cosi' che bindEvents in app.js possa rigenerarlo live
+// quando l'utente modifica una riga di costo e il margine cambia.
+function bbWarnMargine(c){
+  if (!currentUser) return '';
+  const minM = MARGINE_MIN_RUOLO[currentUser.ruolo] ?? 0;
+  const scontoOk = form.scontoStato === "approvato";
+  if (c.mP < minM && !scontoOk) {
+    return '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;margin-bottom:10px;color:#991b1b;font-size:.85rem"><b>⚠ Margine ' + fmtPct(c.mP) + '% sotto la soglia minima del ' + minM + '% per il tuo ruolo.</b> Per salvare devi richiedere uno sconto direzione (da approvare).</div>';
+  }
+  return '';
+}
 
 function renderForm(){
   const c = calcAll(form, true);
@@ -511,21 +535,27 @@ function renderForm(){
     ) +
     '</div></div>'
     ) +
-    '<div class="card sec-card-spese"><div class="sec-title sec-spese"><i class="fas fa-coins"></i>Spese Generali</div><div class="card-body" style="display:flex;align-items:center;gap:12px"><label style="font-size:.85rem;color:var(--o-text-muted);font-weight:500">% su costo totale:</label><input type="number"' + (isUserRole ? ' readonly class="markup-locked" title="Solo supervisore o admin possono modificare le spese generali"' : '') + ' style="width:80px;border:1px solid var(--o-border);border-radius:3px;padding:5px 8px" value="' + form.speseGenerali + '" oninput="syncFormFromDOM();form.speseGenerali=this.value;render()"><span style="font-weight:600;color:#e65100;font-size:.95rem">= EUR ' + fmt(c.sg) + '</span></div></div>' +
-    (function(){
-      const minM = MARGINE_MIN_RUOLO[currentUser.ruolo] ?? 0;
-      const scontoOk = form.scontoStato === "approvato";
-      if (c.mP < minM && !scontoOk) {
-        return '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;margin-bottom:10px;color:#991b1b;font-size:.85rem"><b>⚠ Margine ' + fmtPct(c.mP) + '% sotto la soglia minima del ' + minM + '% per il tuo ruolo.</b> Per salvare devi richiedere uno sconto direzione (da approvare).</div>';
-      }
-      return '';
-    })() +
+    '<div class="card sec-card-spese"><div class="sec-title sec-spese"><i class="fas fa-coins"></i>Parametri offerta</div><div class="card-body" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<label style="font-size:.85rem;color:var(--o-text-muted);font-weight:500">Spese Generali (% su costo totale):</label>' +
+        '<input type="number"' + (isUserRole ? ' readonly class="markup-locked" title="Solo supervisore o admin possono modificare le spese generali"' : '') + ' style="width:80px;border:1px solid var(--o-border);border-radius:3px;padding:5px 8px" value="' + form.speseGenerali + '" oninput="syncFormFromDOM();form.speseGenerali=this.value;render()">' +
+        '<span id="sg-eur" style="font-weight:600;color:#e65100;font-size:.95rem">= EUR ' + fmt(c.sg) + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<label style="font-size:.85rem;color:var(--o-text-muted);font-weight:500" title="Maggiorazione sui ricavi: alza il margine senza toccare le spese generali">Overmarkup (su ricavi):</label>' +
+        '<select id="f-overmarkup" style="border:1px solid var(--o-border);border-radius:3px;padding:5px 8px;background:#fff" onchange="setOvermarkup(this)">' +
+          [0,5,10,15,20,25,30].map(v => '<option value="' + v + '"' + ((parseInt(form.overmarkup,10)||0) === v ? ' selected' : '') + '>+' + v + '%</option>').join('') +
+        '</select>' +
+        (c.overmarkupValore > 0 ? '<span style="font-weight:600;color:#15803d;font-size:.95rem">= +EUR ' + fmt(c.overmarkupValore) + '</span>' : '') +
+      '</div>' +
+    '</div></div>' +
+    '<div id="bb-warn-margine">' + bbWarnMargine(c) + '</div>' +
     '<div class="bottom-bar">' +
-    '<div>Costo Totale: <span style="font-size:1.2rem;font-weight:500;color:var(--o-text)">EUR ' + fmt(c.tC) + '</span></div>' +
-    '<div>Prezzo al cliente: <span style="font-size:1.2rem;font-weight:500;color:var(--o-action)">EUR ' + fmt(c.tFSconto) + '</span>' +
+    '<div>Costo Totale: <span id="bb-tc" style="font-size:1.2rem;font-weight:500;color:var(--o-text)">EUR ' + fmt(c.tC) + '</span></div>' +
+    '<div>Prezzo al cliente: <span id="bb-tfsconto" style="font-size:1.2rem;font-weight:500;color:var(--o-action)">EUR ' + fmt(c.tFSconto) + '</span>' +
     (c.scontoE > 0 ? '<span style="font-size:.82rem;color:var(--o-danger);margin-left:8px;text-decoration:line-through">EUR ' + fmt(c.tF) + '</span><span style="font-size:.78rem;color:var(--o-danger);margin-left:6px">-' + fmt(c.scontoE) + ' EUR sconto</span>' : '') +
     '</div>' +
-    '<div>Margine: <span style="font-size:1.2rem;font-weight:500" class="' + mc(c.mP) + '">' + fmtPct(c.mP) + '%</span></div>' +
+    '<div>Margine: <span id="bb-mp" style="font-size:1.2rem;font-weight:500" class="' + mc(c.mP) + '">' + fmtPct(c.mP) + '%</span></div>' +
     '<button class="btn btn-purple" style="padding:8px 22px;font-size:.85rem" onclick="salva()"><i class="fas fa-save"></i>Salva Offerta</button></div>' +
     '</div></div>';
 }
@@ -535,7 +565,7 @@ function renderForm(){
 function renderRiepilogo(){
   const c = calcAll(form);
   const voci = [["Manodopera", c.tCP, c.tVP], ["Materiali", c.tCM, c.tVM], ["Servizi", c.tCS, c.tVS], ["Manutenzione", c.tCM2, c.tVM2], ["Trasferte", c.tCT, c.tVT]];
-  const kc = c.mP >= 20 ? "background:#dcfce7;color:#15803d" : c.mP >= 10 ? "background:#fef9c3;color:#ca8a04" : "background:#fee2e2;color:#dc2626";
+  const kc = c.mP >= MARGINE_THRESHOLDS.green ? "background:#dcfce7;color:#15803d" : c.mP >= MARGINE_THRESHOLDS.yellow ? "background:#fef9c3;color:#ca8a04" : "background:#fee2e2;color:#dc2626";
   const canEdit = currentUser.ruolo === "admin" || currentUser.ruolo === "supervisore" || form.userId === currentUser.id;
 
   const smartBtns = renderSmartButtons(c, { interactive: false });

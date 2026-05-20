@@ -349,14 +349,14 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
     }
     $sheet->setShowGridLines(false);
 
-    // Conditional formatting sul margine % finale (cella L$r)
-    $mpCondGreen = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_GREATERTHANOREQUAL)->addCondition(20);
+    // Conditional formatting sul margine % finale (cella L$r) — soglie da core/calcoli.php
+    $mpCondGreen = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_GREATERTHANOREQUAL)->addCondition(BP_MARGINE_GREEN);
     $mpCondGreen->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF15803D');
     $mpCondGreen->getStyle()->getFont()->getColor()->setARGB('FFFFFFFF');
-    $mpCondYellow = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_BETWEEN)->addCondition(10)->addCondition(19.99);
+    $mpCondYellow = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_BETWEEN)->addCondition(BP_MARGINE_YELLOW)->addCondition(BP_MARGINE_GREEN - 0.01);
     $mpCondYellow->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFCA8A04');
     $mpCondYellow->getStyle()->getFont()->getColor()->setARGB('FFFFFFFF');
-    $mpCondRed = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_LESSTHAN)->addCondition(10);
+    $mpCondRed = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_LESSTHAN)->addCondition(BP_MARGINE_YELLOW);
     $mpCondRed->getStyle()->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFDC2626');
     $mpCondRed->getStyle()->getFont()->getColor()->setARGB('FFFFFFFF');
     $sheet->getStyle('L' . $r)->setConditionalStyles([$mpCondGreen, $mpCondYellow, $mpCondRed]);
@@ -466,13 +466,13 @@ function bp_xlsx_archivio(array $lista): string {
     $cfRangeStart = $colP . '4';
     $cfRangeEnd   = $colP . ($r - 1);
     if ($r > 4) {
-        $mpCondGreen = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_GREATERTHANOREQUAL)->addCondition(20);
+        $mpCondGreen = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_GREATERTHANOREQUAL)->addCondition(BP_MARGINE_GREEN);
         $mpCondGreen->getStyle()->getFont()->getColor()->setARGB('FF15803D');
         $mpCondGreen->getStyle()->getFont()->setBold(true);
-        $mpCondYellow = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_BETWEEN)->addCondition(10)->addCondition(19.99);
+        $mpCondYellow = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_BETWEEN)->addCondition(BP_MARGINE_YELLOW)->addCondition(BP_MARGINE_GREEN - 0.01);
         $mpCondYellow->getStyle()->getFont()->getColor()->setARGB('FFCA8A04');
         $mpCondYellow->getStyle()->getFont()->setBold(true);
-        $mpCondRed = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_LESSTHAN)->addCondition(10);
+        $mpCondRed = (new Conditional())->setConditionType(Conditional::CONDITION_CELLIS)->setOperatorType(Conditional::OPERATOR_LESSTHAN)->addCondition(BP_MARGINE_YELLOW);
         $mpCondRed->getStyle()->getFont()->getColor()->setARGB('FFDC2626');
         $mpCondRed->getStyle()->getFont()->setBold(true);
         for ($rr = 4; $rr < $r; $rr++) {
