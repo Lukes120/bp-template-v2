@@ -61,14 +61,14 @@ function renderGuida(){
       imgAnno('1-login.png', 'Schermata di login', [
         { x: 50, y: 47, label: 'Inserisci email Odoo (es. cognome@ecotelitalia.it)' },
         { x: 50, y: 60, label: 'Password Odoo' },
-        { x: 50, y: 73, label: 'Pulsante "Accedi" — la sessione resta aperta 7 giorni' },
+        { x: 50, y: 73, label: 'Pulsante "Accedi" — finch&eacute; usi l\'app, la sessione resta aperta; scade dopo 24h di inattivit&agrave;' },
       ]) +
       '<h3>Come accedere</h3>' +
       '<ol>' +
         '<li>Apri l\'app dal browser all\'URL sopra, <strong>oppure</strong></li>' +
         '<li>Dalla scheda <strong>Vendite</strong> di Odoo, apri una <strong>sale.order</strong> e clicca lo smart button <strong>"BP Template"</strong> in alto. L\'app si apre gi&agrave; sul preventivo/ordine corrispondente (deep-link).</li>' +
         '<li>Nel campo <strong>Username</strong> inserisci la tua email Odoo (es. <code>cognome@ecotelitalia.it</code>).</li>' +
-        '<li>Nella <strong>Password</strong> usa quella di Odoo. La sessione resta aperta per 7 giorni.</li>' +
+        '<li>Nella <strong>Password</strong> usa quella di Odoo. Se usi l\'app regolarmente non ti chieder&agrave; di rientrare; serve un nuovo login solo dopo <strong>24h di inattivit&agrave;</strong> (in pratica dopo il weekend).</li>' +
       '</ol>' +
       imgAnno('1b-odoo-smartbutton.png', 'Smart button "BP Template" su sale.order di Odoo', [
         { x: 65, y: 65, label: 'Smart button "BP Template" sulla sale.order: click apre direttamente l\'offerta su BP Template, con il numero preventivo/ordine gi&agrave; popolato' },
@@ -79,7 +79,7 @@ function renderGuida(){
       '</div>' +
       '<div class="guida-callout guida-info">' +
         '<i class="fas fa-shield-alt"></i>' +
-        '<div><strong>Hai l\'autenticazione a 2 fattori (2FA) attiva su Odoo?</strong> Dopo aver inserito email e password apparir&agrave; un secondo campo <strong>"Codice 2FA"</strong>: inserisci il codice di 6 cifre dal tuo Authenticator (lo stesso che usi su Odoo) e clicca <strong>Conferma 2FA</strong>. &Egrave; richiesto solo al primo accesso o dopo aver cambiato la password Odoo; le sessioni successive entrano direttamente per 7 giorni.</div>' +
+        '<div><strong>Hai l\'autenticazione a 2 fattori (2FA) attiva su Odoo?</strong> Dopo aver inserito email e password apparir&agrave; un secondo campo <strong>"Codice 2FA"</strong>: inserisci il codice di 6 cifre dal tuo Authenticator (lo stesso che usi su Odoo) e clicca <strong>Conferma 2FA</strong>. Il 2FA viene richiesto solo dopo <strong>24h di inattivit&agrave;</strong> (tipicamente il luned&igrave; mattina, dopo il weekend) o dopo aver cambiato la password Odoo.</div>' +
       '</div>' +
       imgAnno('1c-login-2fa.png', 'Form di login con campo 2FA visibile', [
         { x: 50, y: 55, label: 'Campo Codice 2FA (6 cifre): appare automaticamente solo per gli utenti con 2FA Odoo attivo' },

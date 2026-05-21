@@ -70,6 +70,25 @@ function bp_current_user(): ?array {
         if (preg_match('/^Bearer\s+(.+)$/i', $auth, $m)) $token = $m[1];
     }
     $user = bp_session_resolve($token);
+    // Sliding session: ogni request autenticata estende la TTL di BP_SESSION_TTL.
+    // Refresh allineato fra DB (bp_session_touch) e cookie browser (bp_session+bp_csrf).
+    // headers_sent() protegge da endpoint che hanno gia' iniziato a stampare output.
+    if ($user && $token && !headers_sent()) {
+        bp_session_touch($token);
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        $exp = time() + BP_SESSION_TTL;
+        setcookie('bp_session', $token, [
+            'expires'  => $exp, 'path' => '/', 'secure' => $secure,
+            'httponly' => true, 'samesite' => 'Lax',
+        ]);
+        $csrf = $_COOKIE['bp_csrf'] ?? null;
+        if ($csrf !== null && $csrf !== '') {
+            setcookie('bp_csrf', $csrf, [
+                'expires'  => $exp, 'path' => '/', 'secure' => $secure,
+                'httponly' => false, 'samesite' => 'Strict',
+            ]);
+        }
+    }
     return $user;
 }
 

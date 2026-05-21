@@ -187,7 +187,7 @@ function bp_db_migrate(PDO $pdo): void {
 const BP_LOGIN_MAX_ATTEMPTS = 5;
 const BP_LOGIN_WINDOW_MIN   = 15;
 const BP_LOGIN_LOCKOUT_SEC  = 1800;
-const BP_SESSION_TTL        = 604800; // 7 giorni
+const BP_SESSION_TTL        = 86400;  // 24h sliding: rinnovata ad ogni request autenticata via bp_session_touch (vedi bp_current_user)
 
 /**
  * Ritorna ['ok' => true] se l'utente/IP può tentare il login,
@@ -273,6 +273,22 @@ function bp_session_resolve(?string $token): ?array {
 function bp_session_destroy(string $token): void {
     $stmt = bp_db()->prepare("DELETE FROM sessions WHERE token = :t");
     $stmt->execute(['t' => $token]);
+}
+
+/**
+ * Sliding TTL: estende expires_at della sessione di BP_SESSION_TTL dal momento attuale.
+ * Chiamata da bp_current_user() su ogni request autenticata: la sessione muore solo
+ * dopo BP_SESSION_TTL secondi di inattivita' continuativa (in pratica: dopo il weekend
+ * per chi lavora 5gg/7). Il WHERE su expires_at > now() evita di "resuscitare" sessioni
+ * gia' scadute (race condition tra resolve e touch).
+ */
+function bp_session_touch(string $token): void {
+    $expires = date('Y-m-d H:i:s', time() + BP_SESSION_TTL);
+    $stmt = bp_db()->prepare(
+        "UPDATE sessions SET expires_at = :exp
+         WHERE token = :t AND expires_at > datetime('now')"
+    );
+    $stmt->execute(['t' => $token, 'exp' => $expires]);
 }
 
 function bp_session_purge_expired(): void {

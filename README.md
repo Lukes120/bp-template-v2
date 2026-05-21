@@ -125,7 +125,7 @@ con password random in `INITIAL_ADMIN_PASSWORD.txt`. **Operazione distruttiva**.
 
 ## Sicurezza (in produzione)
 
-- Sessioni server-side via cookie `bp_session` httpOnly (TTL 7 giorni, `BP_SESSION_TTL`)
+- Sessioni server-side via cookie `bp_session` httpOnly (TTL **24h sliding** rinnovata ad ogni request autenticata, `BP_SESSION_TTL`)
 - Anti session fixation: vecchie sessioni utente cancellate al login
 - CSRF double-submit cookie `bp_csrf` (SameSite=Strict) + header `X-Bp-Csrf` su tutti i POST/DELETE
 - Password bcrypt cost 12
