@@ -1336,3 +1336,58 @@ body.odoo-loading::before{
   padding-left: max(12px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));
 }
+
+/* ============================================================================
+   FIX v=63 (2026-05-21 sera) — refinement post-test smartphone reale.
+   Problemi visti su iPhone (screenshot guida/smart.jpeg):
+   - Topnav: logo "BP Template" andava a capo, hamburger sovrapposto al
+     pulsante Guida giallo, badge "user" occupava spazio inutile.
+   - Smart buttons (Modifica/PDF/Excel/Allega): 4 in flex-wrap con padding
+     22px, l'ultimo finiva tagliato fuori viewport.
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  /* Logo: solo immagine, niente testo "BP Template" (sprecava spazio + wrap).
+     Sovrascrive flex:1 della regola esistente a 768px che gonfiava il logo. */
+  .topnav .topnav-logo { flex: 0 0 auto; min-width: 0; padding: 0 8px; }
+  .topnav-logo-text { display: none; }
+
+  /* Pulsante Guida: piu' compatto su mobile (era 7px 16px con ombre). */
+  .btn-tnav-help {
+    padding: 6px 10px;
+    box-shadow: none;
+    min-height: 38px;
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    justify-content: center;
+  }
+  .btn-tnav-help i { font-size: 1rem; }
+
+  /* Avatar utente piu' compatto, badge ruolo nascosto */
+  .topnav-avatar { width: 30px; height: 30px; font-size: .82rem; }
+  .badge-tnav-admin { display: none; }
+
+  /* Hamburger: ultimo elemento visibile a destra. order alto per posizionarlo
+     dopo tutti gli altri elementi della topnav grazie al flex order. */
+  .topnav-burger { order: 99; margin-left: 4px; padding: 0 10px; }
+}
+
+/* Smart buttons (riga sopra il form): a 4 sfora su qualsiasi mobile.
+   Sotto 640px -> 2 colonne. Sotto 480px -> rimangono 2 colonne (preferibile a 1
+   per non far scrollare troppo verticalmente). */
+@media (max-width: 640px) {
+  .o-smart-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--o-border-light);
+  }
+  .o-smart-btn {
+    padding: 10px 12px;
+    border-right: none;
+    background: var(--o-surface);
+    min-height: 64px;
+  }
+  .o-smart-btn-value { font-size: .92rem; }
+  .o-smart-btn-label { font-size: .68rem; }
+}

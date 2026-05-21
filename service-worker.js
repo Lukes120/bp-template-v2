@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bp-template-v2-v62';
+const CACHE_NAME = 'bp-template-v2-v63';
 // Base path derivato dal SW stesso: funziona sia se servito da /bp-template-v2/
 // che dalla root del vhost (es. http://bptemplate.ecotelitalia.it:8080/).
 const BASE = self.location.pathname.replace(/\/[^\/]*$/, '');
