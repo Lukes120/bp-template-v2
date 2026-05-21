@@ -44,6 +44,8 @@ try {
         ['fields' => ['id', 'name'], 'limit' => 1, 'context' => []]
     );
     if (empty($cerca['result'])) {
+        error_log("[allega_odoo] ordine_non_trovato nOrdine=$nOrdine form_id=" . ($form['id'] ?? '-') . " actor=" . ($me['email'] ?? '-'));
+        bp_audit('attach_odoo_error', 'offerte', $form['id'] ?? null, "ordine_non_trovato: $nOrdine", $me);
         bp_json_out(['error' => "Ordine '$nOrdine' non trovato in Odoo"]);
     }
     $ordineId   = (int)$cerca['result'][0]['id'];
@@ -100,7 +102,11 @@ try {
         ],
     ]], ['context' => []]);
     if (isset($batch['error'])) {
-        bp_json_out(['error' => 'Allega Odoo fallito: ' . ($batch['error']['message'] ?? 'errore sconosciuto')]);
+        $errMsg = $batch['error']['message'] ?? 'errore sconosciuto';
+        $errData = isset($batch['error']['data']) ? json_encode($batch['error']['data']) : '';
+        error_log("[allega_odoo] ir.attachment.create FAIL ordineId=$ordineId ordineNome=$ordineNome form_id=" . ($form['id'] ?? '-') . " actor=" . ($me['email'] ?? '-') . " msg=$errMsg data=$errData");
+        bp_audit('attach_odoo_error', 'offerte', $form['id'] ?? null, "ir_attachment_create_failed: $errMsg | ordine=$ordineNome", $me);
+        bp_json_out(['error' => 'Allega Odoo fallito: ' . $errMsg]);
     }
 
     bp_audit('attach_odoo', 'offerte', $form['id'] ?? null, $ordineNome, bp_actor());
@@ -109,5 +115,7 @@ try {
     }
     bp_json_out(['ok' => true, 'ordineNome' => $ordineNome, 'allegataAt' => date('Y-m-d H:i:s')]);
 } catch (Throwable $e) {
+    error_log("[allega_odoo] EXCEPTION " . get_class($e) . ": " . $e->getMessage() . " @ " . $e->getFile() . ":" . $e->getLine() . " nOrdine=" . ($nOrdine ?? '-') . " form_id=" . ($form['id'] ?? '-') . " actor=" . ($me['email'] ?? '-') . "\nTrace: " . $e->getTraceAsString());
+    bp_audit('attach_odoo_error', 'offerte', $form['id'] ?? null, 'exception: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $me);
     bp_json_out(['error' => $e->getMessage()]);
 }

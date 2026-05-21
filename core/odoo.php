@@ -114,7 +114,8 @@ function bp_odoo_xmlrpc_call(string $path, string $method, array $params) {
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $body,
         CURLOPT_HTTPHEADER     => ['Content-Type: text/xml; charset=utf-8'],
-        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_TIMEOUT        => 180,
         // Accetta risposte compresse (gzip/deflate). curl decomprime automaticamente.
         // Per request comprimere a Odoo richiederebbe Content-Encoding manuale e supporto server
         // (Odoo XML-RPC accetta gzip in input solo se il reverse proxy lo gestisce). Per ora
