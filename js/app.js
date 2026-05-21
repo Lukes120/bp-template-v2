@@ -60,6 +60,7 @@ function render(){
   else if (screen === "profilo")    app.innerHTML = renderProfilo();
   else if (screen === "guida")      app.innerHTML = renderGuida();
   bindEvents();
+  bindBurger();
 }
 
 /* ============== AUTH ============== */
@@ -486,6 +487,33 @@ function delRow(key, id){
 // Event delegation: 1 solo listener "input" su #app, installato 1 sola volta in vita app.
 // Prima (audit pre-P1.3) si attaccava un listener ad ogni input [data-key][data-field] e si
 // riattaccava ad ogni rerender (75+ listener ricostruiti). Ora 1 listener fisso, logica invariata.
+// Hamburger menu mobile (v=62): toggle drawer + outside-click chiude + link tap chiude.
+// Listener su document, idempotente via flag. Nessun impatto desktop: il bottone burger
+// e' display:none sopra 768px, quindi il branch toggle non scatta mai.
+let _bpBurgerBound = false;
+function bindBurger(){
+  if (_bpBurgerBound) return;
+  _bpBurgerBound = true;
+  document.addEventListener("click", function(e){
+    const topnav = document.querySelector(".topnav");
+    if (!topnav) return;
+    const burger = e.target.closest('[data-action="topnav-burger"]');
+    if (burger){
+      e.preventDefault();
+      const open = topnav.classList.toggle("topnav-open");
+      burger.setAttribute("aria-expanded", open ? "true" : "false");
+      return;
+    }
+    if (!topnav.classList.contains("topnav-open")) return;
+    // Click su link nav o fuori dal nav: chiudi
+    if (e.target.closest(".topnav-link") || !e.target.closest(".topnav")){
+      topnav.classList.remove("topnav-open");
+      const b = topnav.querySelector('[data-action="topnav-burger"]');
+      if (b) b.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
 let _bpInputBound = false;
 function bindEvents(){
   if (_bpInputBound) return;

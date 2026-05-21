@@ -28,6 +28,7 @@ function renderTopnav(activeMenu){
       '<img src="logo.png" class="topnav-logo-img" alt="Ecotel Italia">' +
       '<span class="topnav-logo-text">BP Template</span>' +
     '</button>' +
+    '<button class="topnav-burger" type="button" data-action="topnav-burger" aria-label="Apri menu navigazione" aria-expanded="false"><i class="fas fa-bars" aria-hidden="true"></i></button>' +
     '<div class="topnav-links">' +
       link('list', 'Offerte', 'list-ul', "screen='list';render()") +
       (canApprove ? `<button class="topnav-link${activeMenu === 'approvazioni' ? ' active' : ''}" onclick="screen='approvazioni';render()"><i class="fas fa-check-circle"></i>Da approvare${nInAttesa > 0 ? `<span class="topnav-link-badge">${nInAttesa}</span>` : ''}</button>` : '') +
@@ -301,14 +302,14 @@ function renderApprovazioni(){
       richiesta = '<div style="font-weight:bold;color:#ea580c">Sconto: ' + valore + '</div>';
     }
     return '<tr>' +
-      '<td style="font-weight:600;color:#1e293b" title="' + esc(o.nome) + '">' + esc(o.nome) + '</td>' +
-      '<td style="font-size:.82rem;color:#374151">' + esc(o.cliente || "") + '</td>' +
-      '<td style="font-size:.8rem;color:#64748b">' + esc(ut?.nome || "") + '</td>' +
-      '<td style="font-size:.82rem;color:#7c3aed;font-weight:bold">' + esc(o.nOrdineOdoo || "") + '</td>' +
-      '<td style="text-align:right;font-family:\'Roboto Mono\',monospace">' + fmt(c.tF) + '</td>' +
-      '<td style="text-align:right">' + richiesta + '</td>' +
-      '<td style="font-size:.82rem;color:#475569">' + (o.scontoNota || "") + '</td>' +
-      '<td style="text-align:right;white-space:nowrap">' +
+      '<td data-label="Commessa" style="font-weight:600;color:#1e293b" title="' + esc(o.nome) + '">' + esc(o.nome) + '</td>' +
+      '<td data-label="Cliente" style="font-size:.82rem;color:#374151">' + esc(o.cliente || "") + '</td>' +
+      '<td data-label="Utente" style="font-size:.8rem;color:#64748b">' + esc(ut?.nome || "") + '</td>' +
+      '<td data-label="N. Odoo" style="font-size:.82rem;color:#7c3aed;font-weight:bold">' + esc(o.nOrdineOdoo || "") + '</td>' +
+      '<td data-label="Totale offerta" style="text-align:right;font-family:\'Roboto Mono\',monospace">' + fmt(c.tF) + '</td>' +
+      '<td data-label="Richiesta" style="text-align:right">' + richiesta + '</td>' +
+      '<td data-label="Note" style="font-size:.82rem;color:#475569">' + (o.scontoNota || "") + '</td>' +
+      '<td data-label="Azioni" style="text-align:right;white-space:nowrap">' +
         '<button class="btn-dash-rie" onclick="apriRiepilogo(\'' + o.id + '\')">Vedi</button>' +
         '<button style="background:#059669;color:white;border:none;padding:4px 12px;border-radius:5px;font-size:.72rem;font-weight:600;margin-left:4px;cursor:pointer" onclick="approvaSconto(\'' + o.id + '\')">Approva</button>' +
         '<button style="background:#fff1f2;color:#e11d48;border:1px solid #fecdd3;padding:4px 12px;border-radius:5px;font-size:.72rem;font-weight:600;margin-left:4px;cursor:pointer" onclick="rifiutaSconto(\'' + o.id + '\')">Rifiuta</button>' +
@@ -415,11 +416,12 @@ function renderForm(){
     return '<input type="number"' + cls + ' data-key="' + key + '" data-id="' + id + '" data-field="markup" value="' + esc(val || "") + '"' + ro + ' style="min-width:45px">';
   };
 
-  const manRows = c.cp.map(r => '<tr><td>' + sel("personale", r.id, r.categoria) + '</td><td>' + inp("personale", r.id, "oreG", r.oreG, "number", 50) + '</td><td><input type="number" data-key="personale" data-id="' + r.id + '" data-field="costoH" value="' + (r.costoH || CATEGORIE[r.categoria] || 0) + '" readonly style="min-width:65px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:.8rem;width:100%"></td><td class="td-r">' + fmt(r.b) + '</td><td>' + inpMarkup("personale", r.id, r.markup) + '</td><td class="td-pv">' + fmt(r.pv) + '</td><td class="td-mg">' + fmt(r.pv - r.b) + '</td><td><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'personale\',\'' + r.id + '\')">x</button></td></tr>').join("");
-  const matRows = c.cm.map(r => '<tr><td>' + inp("materiali", r.id, "desc", r.desc, "text", 140) + '</td><td>' + inp("materiali", r.id, "qta", r.qta, "number", 50) + '</td><td>' + inp("materiali", r.id, "costoU", r.costoU, "number", 75) + '</td><td class="td-r">' + fmt(r.b) + '</td><td>' + inpMarkup("materiali", r.id, r.markup) + '</td><td class="td-pv">' + fmt(r.pv) + '</td><td class="td-mg">' + fmt(r.pv - r.b) + '</td><td><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'materiali\',\'' + r.id + '\')">x</button></td></tr>').join("");
-  const serRows = c.cs.map(r => '<tr><td>' + inp("servizi", r.id, "desc", r.desc, "text", 140) + '</td><td>' + inp("servizi", r.id, "qta", r.qta, "number", 50) + '</td><td>' + inp("servizi", r.id, "costoU", r.costoU, "number", 75) + '</td><td class="td-r">' + fmt(r.b) + '</td><td>' + inpMarkup("servizi", r.id, r.markup) + '</td><td class="td-pv">' + fmt(r.pv) + '</td><td class="td-mg">' + fmt(r.pv - r.b) + '</td><td><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'servizi\',\'' + r.id + '\')">x</button></td></tr>').join("");
-  const manRows2 = c.cm2.map(r => '<tr><td>' + inp("manutenzione", r.id, "desc", r.desc, "text", 140) + '</td><td>' + inp("manutenzione", r.id, "qta", r.qta, "number", 50) + '</td><td>' + inp("manutenzione", r.id, "costoU", r.costoU, "number", 75) + '</td><td class="td-r">' + fmt(r.b) + '</td><td>' + inpMarkup("manutenzione", r.id, r.markup) + '</td><td class="td-pv">' + fmt(r.pv) + '</td><td class="td-mg">' + fmt(r.pv - r.b) + '</td><td><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'manutenzione\',\'' + r.id + '\')">x</button></td></tr>').join("");
-  const traRows = c.ct.map(r => '<tr>' + ["desc", "persone", "giorni", "costoGiorno", "vitto", "alloggio", "km", "costoKm"].map(f => '<td><input type="' + (f === "desc" ? "text" : "number") + '" data-key="trasferte" data-id="' + r.id + '" data-field="' + f + '" value="' + (r[f] || "") + '" style="min-width:' + (f === "desc" ? 90 : 50) + 'px"></td>').join("") + '<td class="td-r">' + fmt(r.b) + '</td><td>' + inpMarkup("trasferte", r.id, r.markup) + '</td><td class="td-pv">' + fmt(r.pv) + '</td><td class="td-mg">' + fmt(r.pv - r.b) + '</td><td><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'trasferte\',\'' + r.id + '\')">x</button></td></tr>').join("");
+  const manRows = c.cp.map(r => '<tr><td data-label="Categoria">' + sel("personale", r.id, r.categoria) + '</td><td data-label="h/uomo">' + inp("personale", r.id, "oreG", r.oreG, "number", 50) + '</td><td data-label="Costo/h"><input type="number" data-key="personale" data-id="' + r.id + '" data-field="costoH" value="' + (r.costoH || CATEGORIE[r.categoria] || 0) + '" readonly style="min-width:65px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:.8rem;width:100%"></td><td data-label="Costo Tot." class="td-r">' + fmt(r.b) + '</td><td data-label="Markup %">' + inpMarkup("personale", r.id, r.markup) + '</td><td data-label="Prezzo Vendita" class="td-pv">' + fmt(r.pv) + '</td><td data-label="Margine" class="td-mg">' + fmt(r.pv - r.b) + '</td><td data-label=""><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'personale\',\'' + r.id + '\')">x</button></td></tr>').join("");
+  const matRows = c.cm.map(r => '<tr><td data-label="Descrizione">' + inp("materiali", r.id, "desc", r.desc, "text", 140) + '</td><td data-label="Qta">' + inp("materiali", r.id, "qta", r.qta, "number", 50) + '</td><td data-label="Costo Unit.">' + inp("materiali", r.id, "costoU", r.costoU, "number", 75) + '</td><td data-label="Costo Tot." class="td-r">' + fmt(r.b) + '</td><td data-label="Markup %">' + inpMarkup("materiali", r.id, r.markup) + '</td><td data-label="Prezzo Vendita" class="td-pv">' + fmt(r.pv) + '</td><td data-label="Margine" class="td-mg">' + fmt(r.pv - r.b) + '</td><td data-label=""><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'materiali\',\'' + r.id + '\')">x</button></td></tr>').join("");
+  const serRows = c.cs.map(r => '<tr><td data-label="Descrizione">' + inp("servizi", r.id, "desc", r.desc, "text", 140) + '</td><td data-label="Qta">' + inp("servizi", r.id, "qta", r.qta, "number", 50) + '</td><td data-label="Costo Unit.">' + inp("servizi", r.id, "costoU", r.costoU, "number", 75) + '</td><td data-label="Costo Tot." class="td-r">' + fmt(r.b) + '</td><td data-label="Markup %">' + inpMarkup("servizi", r.id, r.markup) + '</td><td data-label="Prezzo Vendita" class="td-pv">' + fmt(r.pv) + '</td><td data-label="Margine" class="td-mg">' + fmt(r.pv - r.b) + '</td><td data-label=""><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'servizi\',\'' + r.id + '\')">x</button></td></tr>').join("");
+  const manRows2 = c.cm2.map(r => '<tr><td data-label="Descrizione">' + inp("manutenzione", r.id, "desc", r.desc, "text", 140) + '</td><td data-label="Qta">' + inp("manutenzione", r.id, "qta", r.qta, "number", 50) + '</td><td data-label="Costo/Un">' + inp("manutenzione", r.id, "costoU", r.costoU, "number", 75) + '</td><td data-label="Costo Tot." class="td-r">' + fmt(r.b) + '</td><td data-label="Markup %">' + inpMarkup("manutenzione", r.id, r.markup) + '</td><td data-label="Prezzo Vendita" class="td-pv">' + fmt(r.pv) + '</td><td data-label="Margine" class="td-mg">' + fmt(r.pv - r.b) + '</td><td data-label=""><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'manutenzione\',\'' + r.id + '\')">x</button></td></tr>').join("");
+  const traFields = [["desc","Descrizione"],["persone","Persone"],["giorni","Giorni"],["costoGiorno","Costo/g/pers"],["vitto","Vitto/p/g"],["alloggio","Alloggio/p/g"],["km","Km"],["costoKm","EUR/km"]];
+  const traRows = c.ct.map(r => '<tr>' + traFields.map(([f,lbl]) => '<td data-label="' + lbl + '"><input type="' + (f === "desc" ? "text" : "number") + '" data-key="trasferte" data-id="' + r.id + '" data-field="' + f + '" value="' + (r[f] || "") + '" style="min-width:' + (f === "desc" ? 90 : 50) + 'px"></td>').join("") + '<td data-label="Costo Tot." class="td-r">' + fmt(r.b) + '</td><td data-label="Markup %">' + inpMarkup("trasferte", r.id, r.markup) + '</td><td data-label="Prezzo Vendita" class="td-pv">' + fmt(r.pv) + '</td><td data-label="Margine" class="td-mg">' + fmt(r.pv - r.b) + '</td><td data-label=""><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'trasferte\',\'' + r.id + '\')">x</button></td></tr>').join("");
 
   const smartBtns = renderSmartButtons(c, { interactive: true });
 
@@ -551,12 +553,12 @@ function renderForm(){
     '</div></div>' +
     '<div id="bb-warn-margine">' + bbWarnMargine(c) + '</div>' +
     '<div class="bottom-bar">' +
-    '<div>Costo Totale: <span id="bb-tc" style="font-size:1.2rem;font-weight:500;color:var(--o-text)">EUR ' + fmt(c.tC) + '</span></div>' +
-    '<div>Prezzo al cliente: <span id="bb-tfsconto" style="font-size:1.2rem;font-weight:500;color:var(--o-action)">EUR ' + fmt(c.tFSconto) + '</span>' +
+    '<div class="bb-item bb-item-secondary">Costo Totale: <span id="bb-tc" style="font-size:1.2rem;font-weight:500;color:var(--o-text)">EUR ' + fmt(c.tC) + '</span></div>' +
+    '<div class="bb-item bb-item-primary">Prezzo al cliente: <span id="bb-tfsconto" style="font-size:1.2rem;font-weight:500;color:var(--o-action)">EUR ' + fmt(c.tFSconto) + '</span>' +
     (c.scontoE > 0 ? '<span style="font-size:.82rem;color:var(--o-danger);margin-left:8px;text-decoration:line-through">EUR ' + fmt(c.tF) + '</span><span style="font-size:.78rem;color:var(--o-danger);margin-left:6px">-' + fmt(c.scontoE) + ' EUR sconto</span>' : '') +
     '</div>' +
-    '<div>Margine: <span id="bb-mp" style="font-size:1.2rem;font-weight:500" class="' + mc(c.mP) + '">' + fmtPct(c.mP) + '%</span></div>' +
-    '<button class="btn btn-purple" style="padding:8px 22px;font-size:.85rem" onclick="salva()"><i class="fas fa-save"></i>Salva Offerta</button></div>' +
+    '<div class="bb-item bb-item-primary">Margine: <span id="bb-mp" style="font-size:1.2rem;font-weight:500" class="' + mc(c.mP) + '">' + fmtPct(c.mP) + '%</span></div>' +
+    '<button class="btn btn-purple bb-action" style="padding:8px 22px;font-size:.85rem" onclick="salva()"><i class="fas fa-save"></i>Salva Offerta</button></div>' +
     '</div></div>';
 }
 
@@ -609,15 +611,15 @@ function renderRiepilogo(){
     (form.nOrdineOdoo ? '<div class="odoo-bar success"><i class="fas fa-link"></i>Allegati pronti per <b>' + esc(form.nOrdineOdoo) + '</b> in Odoo</div>' :
       '<div class="odoo-bar"><i class="fas fa-exclamation-triangle"></i>N. Prev/Ordine Odoo non inserito. Torna in modifica per inserirlo.</div>') +
     '<table class="riep-table" style="margin-top:6px"><thead><tr><th>Voce</th><th style="text-align:right">Costo</th><th style="text-align:right">Prezzo Vendita</th><th style="text-align:right">Margine</th><th style="text-align:right">Margine %</th></tr></thead><tbody>' +
-    voci.map(([l, co, v]) => '<tr><td style="font-weight:500">' + l + '</td><td style="text-align:right">' + fmt(co) + '</td><td style="text-align:right;color:var(--o-action);font-weight:500">' + fmt(v) + '</td><td style="text-align:right;color:var(--o-success)">' + fmt(v - co) + '</td><td style="text-align:right">' + fmtPct(v > 0 ? (v - co) / v * 100 : 0) + '%</td></tr>').join("") +
-    '<tr class="riep-spese"><td>Spese Generali (' + form.speseGenerali + '%)</td><td style="text-align:right">--</td><td style="text-align:right">' + fmt(c.sg) + '</td><td colspan="2"></td></tr>' +
+    voci.map(([l, co, v]) => '<tr><td data-label="Voce" style="font-weight:500">' + l + '</td><td data-label="Costo" style="text-align:right">' + fmt(co) + '</td><td data-label="Prezzo Vendita" style="text-align:right;color:var(--o-action);font-weight:500">' + fmt(v) + '</td><td data-label="Margine" style="text-align:right;color:var(--o-success)">' + fmt(v - co) + '</td><td data-label="Margine %" style="text-align:right">' + fmtPct(v > 0 ? (v - co) / v * 100 : 0) + '%</td></tr>').join("") +
+    '<tr class="riep-spese"><td data-label="Voce">Spese Generali (' + form.speseGenerali + '%)</td><td data-label="Costo" style="text-align:right">--</td><td data-label="Prezzo Vendita" style="text-align:right">' + fmt(c.sg) + '</td><td colspan="2"></td></tr>' +
     (c.scontoE > 0 && !c.prezzoImpostoOk
-      ? '<tr style="background:#fce4e4"><td style="font-weight:500;color:var(--o-danger)">Sconto Direzione</td><td style="text-align:right">--</td><td style="text-align:right;color:var(--o-danger);font-weight:500">- ' + fmt(c.scontoE) + '</td><td colspan="2"></td></tr>'
+      ? '<tr style="background:#fce4e4"><td data-label="Voce" style="font-weight:500;color:var(--o-danger)">Sconto Direzione</td><td data-label="Costo" style="text-align:right">--</td><td data-label="Prezzo Vendita" style="text-align:right;color:var(--o-danger);font-weight:500">- ' + fmt(c.scontoE) + '</td><td colspan="2"></td></tr>'
       : '') +
     '</tbody><tfoot>' +
-    '<tr class="riep-total' + (c.prezzoImpostoOk ? ' riep-total-calc' : '') + '"><td>TOTALE CALCOLATO</td><td style="text-align:right">' + fmt(c.tC) + '</td><td style="text-align:right">' + fmt(c.tFCalc) + '</td><td style="text-align:right">' + fmt(c.mECalc) + '</td><td style="text-align:right">' + fmtPct(c.mPCalc) + '%</td></tr>' +
+    '<tr class="riep-total' + (c.prezzoImpostoOk ? ' riep-total-calc' : '') + '"><td data-label="Voce">TOTALE CALCOLATO</td><td data-label="Costo" style="text-align:right">' + fmt(c.tC) + '</td><td data-label="Prezzo Vendita" style="text-align:right">' + fmt(c.tFCalc) + '</td><td data-label="Margine" style="text-align:right">' + fmt(c.mECalc) + '</td><td data-label="Margine %" style="text-align:right">' + fmtPct(c.mPCalc) + '%</td></tr>' +
     (c.prezzoImpostoOk
-      ? '<tr class="riep-total riep-total-pi"><td><i class="fas fa-bullseye"></i> PREZZO IMPOSTO</td><td style="text-align:right">' + fmt(c.tC) + '</td><td style="text-align:right">' + fmt(c.tFSconto) + '</td><td style="text-align:right">' + fmt(c.mE) + '</td><td style="text-align:right">' + fmtPct(c.mP) + '%</td></tr>'
+      ? '<tr class="riep-total riep-total-pi"><td data-label="Voce"><i class="fas fa-bullseye"></i> PREZZO IMPOSTO</td><td data-label="Costo" style="text-align:right">' + fmt(c.tC) + '</td><td data-label="Prezzo Vendita" style="text-align:right">' + fmt(c.tFSconto) + '</td><td data-label="Margine" style="text-align:right">' + fmt(c.mE) + '</td><td data-label="Margine %" style="text-align:right">' + fmtPct(c.mP) + '%</td></tr>'
       : '') +
     '</tfoot></table>' +
     '<div class="kpi-grid">' +
