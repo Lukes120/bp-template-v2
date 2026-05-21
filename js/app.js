@@ -573,6 +573,7 @@ async function chiediSconto(){
   if (!form.nome.trim())                { toast("Inserisci il nome della commessa", "warn"); return; }
   if (!(form.nOrdineOdoo || "").trim()) { toast("Inserisci il N. Prev/Ordine Odoo", "warn"); return; }
   if (!confirm("Inviare richiesta di sconto ai supervisori?")) return;
+  const statoBackup = form.scontoStato;
   form.scontoStato = "inattesa";
   form.userId = currentUser.id; form.userName = currentUser.nome;
   if (!editId) {
@@ -582,7 +583,18 @@ async function chiediSconto(){
   } else {
     offerte = offerte.map(o => o.id === editId ? { ...form } : o);
   }
-  await fbSaveOfferta({ ...form });
+  // Save server-side PRIMA della mail. Se il server rifiuta (es. validazione),
+  // l'offerta non e' in DB e mandare la mail farebbe arrivare al supervisore una
+  // notifica per qualcosa che non esiste. Rollback in-memory dello scontoStato.
+  const saveRes = await fbSaveOfferta({ ...form });
+  if (saveRes && saveRes.error) {
+    form.scontoStato = statoBackup;
+    if (offerte.length && offerte[offerte.length - 1].id === form.id && statoBackup === "") {
+      offerte.pop(); editId = null;
+    }
+    toast("Salvataggio fallito: " + saveRes.error, "err", 8000);
+    return;
+  }
   formDirty = false;
   let mailOk = false;
   try {
@@ -590,6 +602,7 @@ async function chiediSconto(){
     const r = await apiPost(API.notificaSconto, {
       offerta: form.nome, cliente: form.cliente || "", utente: currentUser.nome,
       totale: c2.tFSconto, margine: c2.mP, tipo: "sconto", nOrdine: form.nOrdineOdoo || "",
+      offerta_id: form.id,
     });
     mailOk = r && r.ok === true;
   } catch (e) { console.error("Notifica email fallita:", e); }
@@ -659,6 +672,7 @@ async function chiediApprovazionePrezzoImposto(){
   const piVal = parseFloat(form.prezzoImpostoValore) || 0;
   if (piVal <= 0) { toast("Inserisci un prezzo target maggiore di zero.", "warn"); return; }
   if (!confirm("Inviare richiesta di approvazione del prezzo imposto a EUR " + fmt(piVal) + "?")) return;
+  const statoBackup = form.scontoStato;
   form.scontoStato = "inattesa";
   form.userId = currentUser.id; form.userName = currentUser.nome;
   if (!editId) {
@@ -668,7 +682,17 @@ async function chiediApprovazionePrezzoImposto(){
   } else {
     offerte = offerte.map(o => o.id === editId ? { ...form } : o);
   }
-  await fbSaveOfferta({ ...form });
+  // Save server-side PRIMA della mail. Se il server rifiuta, niente notifica:
+  // evita di mandare al supervisore una mail per un'offerta inesistente in DB.
+  const saveRes = await fbSaveOfferta({ ...form });
+  if (saveRes && saveRes.error) {
+    form.scontoStato = statoBackup;
+    if (offerte.length && offerte[offerte.length - 1].id === form.id && statoBackup === "") {
+      offerte.pop(); editId = null;
+    }
+    toast("Salvataggio fallito: " + saveRes.error, "err", 8000);
+    return;
+  }
   formDirty = false;
   let mailOk = false;
   try {
@@ -676,6 +700,7 @@ async function chiediApprovazionePrezzoImposto(){
     const r = await apiPost(API.notificaSconto, {
       offerta: form.nome, cliente: form.cliente || "", utente: currentUser.nome,
       totale: piVal, margine: c2.mP, tipo: "prezzo_imposto", nOrdine: form.nOrdineOdoo || "",
+      offerta_id: form.id,
     });
     mailOk = r && r.ok === true;
   } catch (e) { console.error("Notifica email fallita:", e); }

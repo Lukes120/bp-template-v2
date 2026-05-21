@@ -151,16 +151,22 @@ if ($method === 'POST') {
     //   2) margine effettivo < soglia ruolo + nessuno sconto approvato -> blocco
     $MARGINE_MIN_RUOLO = ['user' => 15, 'viewer' => 15, 'supervisore' => 5, 'admin' => 0];
     $minMargine = $MARGINE_MIN_RUOLO[$me['ruolo']] ?? 0;
-    $scontoApprovato = ($d['scontoStato'] ?? '') === 'approvato';
+    $statoSc = $d['scontoStato'] ?? '';
+    // "approvato" = autorizzato, "inattesa" = utente sta chiedendo approvazione adesso.
+    // Entrambi bypassano le regole anti-sotto-soglia: senza questo bypass il flow di
+    // "Chiedi approvazione" fallirebbe (catch-22: per essere approvata serve salvarla,
+    // per salvarla serve approvazione). Bug 21/05/2026 v=63: utente Matteo perse
+    // un'offerta perche' il save veniva bloccato ma la mail di richiesta partiva lo stesso.
+    $scontoOk = in_array($statoSc, ['approvato', 'inattesa'], true);
     $piAttivo = !empty($d['prezzoImpostoAttivo']);
 
-    if ($piAttivo && !$scontoApprovato && $me['ruolo'] === 'user') {
+    if ($piAttivo && !$scontoOk && $me['ruolo'] === 'user') {
         bp_audit('validation_fail', 'offerte', $d['id'], 'PI attivo senza approvazione (ruolo user)', $me);
         bp_json_out(['error' => 'Modalita\' prezzo imposto attiva: richiede approvazione supervisore prima del salvataggio. Chiedi approvazione oppure disattiva il toggle.'], 400);
     }
 
     $cValid = bp_calc_all($d);
-    if ($cValid['mP'] < $minMargine && !$scontoApprovato) {
+    if ($cValid['mP'] < $minMargine && !$scontoOk) {
         $msg = sprintf('margine %.2f%% < soglia %d%% (ruolo %s)', $cValid['mP'], $minMargine, $me['ruolo']);
         bp_audit('validation_fail', 'offerte', $d['id'], $msg, $me);
         $mpFmt = number_format($cValid['mP'], 1, ',', '.');
