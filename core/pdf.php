@@ -121,6 +121,12 @@ function bp_pdf_offerta(array $form, string $utente): string {
         $h .= '<td class="r">' . bp_fmt_pct($v > 0 ? ($v - $co) / $v * 100 : 0) . '%</td></tr>';
     }
     $h .= '<tr><td class="b">Spese Generali (' . htmlspecialchars((string)($form['speseGenerali'] ?? '5')) . '%)</td><td class="r">--</td><td class="r" style="color:#ea580c;font-weight:bold">' . bp_fmt($c['sg']) . '</td><td colspan="2"></td></tr>';
+    // Riga Overmarkup esplicita (solo se >0): trasparenza sul "+X%" applicato al
+    // prezzo finale, simmetrica a Spese Generali. Bp_calc_all gia' include
+    // l'overmarkup in tFCalc/tFSconto, qui mostriamo solo il valore EUR aggiunto.
+    if (!empty($c['overmarkup']) && (int)$c['overmarkup'] > 0) {
+        $h .= '<tr><td class="b">Overmarkup (+' . (int)$c['overmarkup'] . '%)</td><td class="r">--</td><td class="r" style="color:#059669;font-weight:bold">+ ' . bp_fmt($c['overmarkupValore']) . '</td><td colspan="2"></td></tr>';
+    }
 
     $prezzoImpostoOk = !empty($c['prezzoImpostoOk']);
     $scontoE = $c['scontoE'] ?? 0;

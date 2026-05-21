@@ -244,6 +244,7 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
     $sheet->getRowDimension($r)->setRowHeight(18); $r++;
 
     $sgPct = bp_pf($form['speseGenerali'] ?? 5);
+    $overmarkup = (int)($form['overmarkup'] ?? 0);
     $sheet->setCellValue('A' . $r, 'Spese Generali (' . $sgPct . '%)');
     $sheet->mergeCells('A' . $r . ':H' . $r);
     $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
@@ -253,6 +254,25 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
     $sheet->getStyle('A' . $r)->getFont()->setBold(true);
     $sheet->getStyle($sgCell)->getNumberFormat()->setFormatCode($numFmt);
     $sheet->getRowDimension($r)->setRowHeight(16); $r++;
+
+    // Overmarkup esplicito (solo se >0). Simmetrica a Spese Generali: la formula
+    // del totale calcolato somma la cella ($omCell), cosi' l'utente vede il +X%
+    // e Excel resta coerente con UI/PDF. Bug pre-v=67: totale Excel calcolava
+    // $tVSum*(1+sgPct/100) ignorando overmarkup, totale errato per Luca (5%) e
+    // Samà (15%) il 20-21/05.
+    $omCell = null;
+    if ($overmarkup > 0) {
+        $sheet->setCellValue('A' . $r, 'Overmarkup (+' . $overmarkup . '%)');
+        $sheet->mergeCells('A' . $r . ':H' . $r);
+        $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $omCell = 'K' . $r;
+        $sheet->setCellValue($omCell, '=' . $totV . '*(' . $overmarkup . '/100)');
+        $sheet->getStyle('A' . $r . ':L' . $r)->applyFromArray($rowAltStyle);
+        $sheet->getStyle('A' . $r)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $r)->getFont()->getColor()->setARGB('FF059669');
+        $sheet->getStyle($omCell)->getNumberFormat()->setFormatCode($numFmt);
+        $sheet->getRowDimension($r)->setRowHeight(16); $r++;
+    }
 
     $prezzoImpostoOk = !empty($form['prezzoImpostoAttivo']) && (($form['scontoStato'] ?? '') === 'approvato');
     $scontoApp = !$prezzoImpostoOk && ($form['scontoStato'] ?? '') === 'approvato' ? bp_pf($form['scontoValore'] ?? 0) : 0;
@@ -270,7 +290,8 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
         $b = bp_pf($rr['costoGiorno']) * $p * $g + bp_pf($rr['vitto']) * $p * $g + bp_pf($rr['alloggio']) * $p * $g + bp_pf($rr['km']) * bp_pf($rr['costoKm']);
         $tVSum += $b * (1 + bp_pf($rr['markup']) / 100);
     }
-    $tFCalc = $tVSum * (1 + $sgPct / 100);
+    // tFCalc PHP-side (usato sotto per calcolare lo sconto direzione): include overmarkup.
+    $tFCalc = $tVSum * (1 + $overmarkup / 100) + $tVSum * ($sgPct / 100);
 
     // Sconto Direzione: solo se prezzo imposto NON attivo e c'è uno sconto effettivo
     if (!$prezzoImpostoOk && $scontoApp > 0) {
@@ -288,9 +309,9 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
         $sheet->getStyle('A' . $r)->getFont()->getColor()->setARGB('FFDC2626');
         $sheet->getStyle($scontoCell)->getNumberFormat()->setFormatCode($numFmt);
         $sheet->getRowDimension($r)->setRowHeight(16); $r++;
-        $totCalcFormula = '=' . $totV . '+' . $sgCell . '+' . $scontoCell;
+        $totCalcFormula = '=' . $totV . '+' . $sgCell . ($omCell ? '+' . $omCell : '') . '+' . $scontoCell;
     } else {
-        $totCalcFormula = '=' . $totV . '+' . $sgCell;
+        $totCalcFormula = '=' . $totV . '+' . $sgCell . ($omCell ? '+' . $omCell : '');
     }
 
     // TOTALE CALCOLATO (sempre presente). Quando prezzo imposto attivo, è il riferimento di base ma non il prezzo praticato.
