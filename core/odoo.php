@@ -242,12 +242,18 @@ function bp_odoo_call_kw_safe(string $model, string $method, array $args = [], a
  *   - null se credenziali errate o errore di rete
  */
 function bp_odoo_authenticate(string $login, string $password, ?string $totpCode = null, ?string $pendingToken = null): ?array {
+    // DIAGNOSTICA TEMPORANEA (aggiunto 21/05/2026 per caso fgiacomet): logging
+    // [BP_SSO] a ogni stage del flow, scrive su C:\laragon\tmp\php_errors.log.
+    // Reintroduce in forma compatta i log che erano presenti prima del refactor v=57.
+    // RIMUOVERE dopo aver chiuso il caso fgiacomet (cerca "[BP_SSO]" e taglia).
     $db = bp_env('ODOO_DB');
-    if (!$db) return null;
+    if (!$db) { error_log("[BP_SSO] FAIL login=$login ODOO_DB mancante in env"); return null; }
 
     $odoo = rtrim(bp_env('ODOO_URL'), '/');
     $cookieFile = tempnam(sys_get_temp_dir(), 'bp_sso_');
-    if (!$cookieFile) return null;
+    if (!$cookieFile) { error_log("[BP_SSO] FAIL login=$login tempnam fallito"); return null; }
+
+    error_log("[BP_SSO] START login=$login totp=" . ($totpCode !== null && $totpCode !== '' ? 'PRESENT(' . strlen($totpCode) . ')' : 'NO') . " pending=" . ($pendingToken ? 'YES' : 'NO'));
 
     try {
         $hasTotp = ($totpCode !== null && $totpCode !== '');
@@ -255,24 +261,25 @@ function bp_odoo_authenticate(string $login, string $password, ?string $totpCode
 
         // ============================================================
         // FAST PATH: secondo submit con pending_token -> salta Stage A+B
-        // Ripristina cookie da DB e va direttamente a Stage C (GET TOTP page).
         // ============================================================
         if ($hasTotp && $pendingToken) {
             $totpUrl = bp_odoo_pending_2fa_load($pendingToken, $login, $cookieFile);
             if ($totpUrl) {
-                // skippa Stage A e B, va dritto a Stage C
+                error_log("[BP_SSO] login=$login fast-path pending token OK, skip a stage_c");
                 goto stage_c;
             }
-            // se token invalido/scaduto cade nel flow normale (rigenera tutto)
+            error_log("[BP_SSO] login=$login pending token invalido/scaduto, fallback flow normale");
         }
 
         // ============================================================
         // Stage A — GET /web/login: estraggo csrf_token iniziale
         // ============================================================
         $r1 = bp_odoo_web_call($odoo . '/web/login?db=' . urlencode($db), $cookieFile);
+        error_log("[BP_SSO] login=$login A GET /web/login -> HTTP {$r1['code']}");
         if ($r1['code'] !== 200) return null;
         $csrf1 = bp_odoo_extract_csrf($r1['body']);
-        if (!$csrf1) return null;
+        if (!$csrf1) { error_log("[BP_SSO] login=$login A csrf_token NON trovato nel HTML"); return null; }
+        error_log("[BP_SSO] login=$login A csrf1=" . substr($csrf1, 0, 16) . '...');
 
         // ============================================================
         // Stage B — POST /web/login con password
@@ -289,23 +296,22 @@ function bp_odoo_authenticate(string $login, string $password, ?string $totpCode
             CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
         ]);
         $loc2 = bp_odoo_extract_location($r2['headers']);
+        error_log("[BP_SSO] login=$login B POST /web/login -> HTTP {$r2['code']} loc=" . ($loc2 ?: '(none)'));
         if ($r2['code'] === 303 && $loc2 && stripos($loc2, '/login/totp') !== false) {
             // 2FA richiesto
             $totpUrl = (strpos($loc2, 'http') === 0) ? $loc2 : $odoo . $loc2;
             if (!$hasTotp) {
-                // Salva il "ticket" pending in DB (cookie + URL TOTP), ritorna token al frontend.
-                // Al 2° submit useremo il token per saltare GET/POST /web/login.
                 $token = bp_odoo_pending_2fa_save($login, $cookieFile, $totpUrl);
+                error_log("[BP_SSO] login=$login B totp_required, pending token salvato (no code yet)");
                 return ['totp_required' => true, 'pending_token' => $token];
             }
             stage_c:
             // Stage C: prelevo csrf2 dalla pagina TOTP
             $r3 = bp_odoo_web_call($totpUrl, $cookieFile);
+            error_log("[BP_SSO] login=$login C GET /login/totp -> HTTP {$r3['code']}");
             if ($r3['code'] !== 200) return null;
             $csrf2 = bp_odoo_extract_csrf($r3['body']);
-            if (!$csrf2) return null;
-            // Stage C-bis: POST codice TOTP. Aggiungiamo Referer (browser reale lo manda),
-            // alcune installazioni Odoo lo richiedono per anti-CSRF su auth_totp.
+            if (!$csrf2) { error_log("[BP_SSO] login=$login C csrf2 NON trovato"); return null; }
             $r4 = bp_odoo_web_call($odoo . '/web/login/totp', $cookieFile, [
                 CURLOPT_POST       => true,
                 CURLOPT_POSTFIELDS => http_build_query([
@@ -321,15 +327,26 @@ function bp_odoo_authenticate(string $login, string $password, ?string $totpCode
                 ],
             ]);
             $loc4 = bp_odoo_extract_location($r4['headers']);
+            error_log("[BP_SSO] login=$login C POST /login/totp -> HTTP {$r4['code']} loc=" . ($loc4 ?: '(none)'));
             if ($r4['code'] !== 303 || !$loc4 || stripos($loc4, '/login') !== false) {
+                error_log("[BP_SSO] login=$login C TOTP rejected (code errato o scaduto)");
                 return null;
             }
-            // Pulisce il pending ticket (se era stato usato dal fast path)
             if ($pendingToken) bp_odoo_pending_2fa_delete($pendingToken);
         } elseif ($r2['code'] === 303 && $loc2 && stripos($loc2, '/login') === false) {
-            // No 2FA, login OK direttamente (es. utente senza TOTP attivo)
+            // No 2FA, login OK direttamente
+            error_log("[BP_SSO] login=$login B no-2FA, login diretto OK (no TOTP attivo su utente)");
         } else {
             // 200 con alert HTML = credenziali errate, o altro errore
+            $hint = '';
+            if ($r2['code'] === 200) {
+                if (stripos($r2['body'], 'wrong login') !== false || stripos($r2['body'], 'credentials') !== false || stripos($r2['body'], 'invalid') !== false) {
+                    $hint = ' (HTML contiene "wrong/invalid" - credenziali errate)';
+                } elseif (stripos($r2['body'], 'login') !== false) {
+                    $hint = ' (HTTP 200 con form login - probabile credenziali errate)';
+                }
+            }
+            error_log("[BP_SSO] login=$login B FAIL credenziali (no redirect 303)$hint");
             return null;
         }
 
@@ -342,11 +359,13 @@ function bp_odoo_authenticate(string $login, string $password, ?string $totpCode
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         ]);
         $j = json_decode($r5['body'], true);
-        if (!$j || empty($j['result']) || empty($j['result']['uid'])) return null;
+        if (!$j || empty($j['result']) || empty($j['result']['uid'])) {
+            error_log("[BP_SSO] login=$login D get_session_info FAIL: " . substr($r5['body'] ?? '', 0, 200));
+            return null;
+        }
         $uid = (int)$j['result']['uid'];
-        // username Odoo (= email per Ecotel) e partner_display_name (= nome) bastano per il provisioning.
-        // Skippiamo l'XML-RPC read res.users (1 round-trip risparmiato, ~1-2s).
         $usernameFromOdoo = $j['result']['username'] ?? $login;
+        error_log("[BP_SSO] login=$login D OK uid=$uid email=$usernameFromOdoo");
         return [
             'uid'   => $uid,
             'login' => $usernameFromOdoo,
@@ -355,7 +374,7 @@ function bp_odoo_authenticate(string $login, string $password, ?string $totpCode
         ];
 
     } catch (Throwable $e) {
-        error_log('Odoo SSO web flow error: ' . $e->getMessage());
+        error_log('[BP_SSO] login=' . $login . ' EXCEPTION ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
         return null;
     } finally {
         @unlink($cookieFile);
