@@ -452,10 +452,17 @@ function renderForm(){
         return '<div class="pi-bar"><button type="button" class="btn-pi-add" onclick="apriPrezzoImposto()"><i class="fas fa-bullseye"></i> Attiva Prezzo Imposto</button>' +
           '<span class="pi-bar-hint">Imposta un prezzo finale concordato in alternativa allo Sconto Direzione</span></div>';
       }
+      // Badge "Da inviare" sostituito da "Margine OK" se user ha margine sopra soglia
+      // (v=65: PI con margine sufficiente non richiede approvazione esplicita).
+      const isUserBar = currentUser && currentUser.ruolo === "user";
+      const mPPreviewBar = piVal > 0 ? ((piVal - c.tC) / piVal) * 100 : 0;
+      const minMargineBar = MARGINE_MIN_RUOLO[currentUser?.ruolo] ?? 0;
+      const margineOkBar = mPPreviewBar >= minMargineBar;
       let badge;
       if (stato === "approvato") badge = '<span class="pi-badge pi-ok"><i class="fas fa-check-circle"></i> Approvato</span>';
       else if (stato === "rifiutato") badge = '<span class="pi-badge pi-ko"><i class="fas fa-times-circle"></i> Rifiutato</span>';
       else if (stato === "inattesa") badge = '<span class="pi-badge pi-wait"><i class="fas fa-hourglass-half"></i> In attesa</span>';
+      else if (isUserBar && margineOkBar) badge = '<span class="pi-badge pi-ok"><i class="fas fa-check-circle"></i> Margine OK</span>';
       else badge = '<span class="pi-badge pi-draft"><i class="fas fa-pencil-alt"></i> Da inviare</span>';
       return '<div class="pi-bar pi-bar-active">' +
         '<span class="pi-pill"><i class="fas fa-bullseye"></i> Prezzo Imposto: <b>' + fmt(piVal) + ' EUR</b></span>' +
@@ -493,14 +500,28 @@ function renderForm(){
         '<span style="font-size:.82rem;color:#6b7280">(' + (mePreview >= 0 ? '+' : '') + fmt(mePreview) + ' EUR)</span>' +
       '</div>';
       if (isUser) {
+        // Soglia margine ruolo (parita' col server, vedi MARGINE_MIN_RUOLO in api/offerte.php)
+        const minMargineUser = MARGINE_MIN_RUOLO[currentUser.ruolo] ?? 0;
+        const margineOk = mPPreview >= minMargineUser;
         if (stato === "approvato") {
           body += '<div style="margin-top:10px;background:#dcfce7;color:#15803d;font-weight:700;padding:8px 14px;border-radius:6px;display:inline-block"><i class="fas fa-check-circle"></i> Prezzo concordato approvato: EUR ' + fmt(piVal) + '</div>';
         } else if (stato === "rifiutato") {
           body += '<div style="margin-top:10px;background:#fee2e2;color:#dc2626;font-weight:700;padding:8px 14px;border-radius:6px;display:inline-block"><i class="fas fa-times-circle"></i> Richiesta rifiutata' + (form.scontoNota ? ' — ' + esc(form.scontoNota) : '') + '</div>';
+          if (margineOk) {
+            body += '<div style="margin-top:6px;font-size:.82rem;color:#15803d">Il margine attuale (' + fmtPct(mPPreview) + '%) e\' sopra soglia: puoi salvare normalmente senza nuova richiesta.</div>';
+          } else {
+            body += '<div style="margin-top:6px"><button class="btn btn-orange" onclick="chiediApprovazionePrezzoImposto()"><i class="fas fa-paper-plane"></i> Ripeti richiesta</button></div>';
+          }
         } else if (stato === "inattesa") {
           body += '<div style="margin-top:10px;background:#fef9c3;color:#ca8a04;font-weight:700;padding:8px 14px;border-radius:6px;display:inline-block"><i class="fas fa-hourglass-half"></i> Richiesta inviata — in attesa di approvazione</div>';
+        } else if (margineOk) {
+          // Nuovo v=65: margine >= soglia ruolo -> autoapprovato, niente richiesta
+          body += '<div style="margin-top:10px;background:#dcfce7;color:#15803d;font-weight:700;padding:8px 14px;border-radius:6px;display:inline-block"><i class="fas fa-check-circle"></i> Margine ' + fmtPct(mPPreview) + '% sopra soglia (' + minMargineUser + '%) — salvabile senza approvazione</div>';
         } else {
-          body += '<div style="margin-top:10px"><button class="btn btn-orange" onclick="chiediApprovazionePrezzoImposto()"><i class="fas fa-paper-plane"></i> Chiedi approvazione</button></div>';
+          body += '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+            '<span style="background:#fef3c7;color:#92400e;font-weight:600;padding:6px 12px;border-radius:6px;font-size:.85rem"><i class="fas fa-exclamation-triangle"></i> Margine ' + fmtPct(mPPreview) + '% sotto soglia (' + minMargineUser + '%) — serve approvazione</span>' +
+            '<button class="btn btn-orange" onclick="chiediApprovazionePrezzoImposto()"><i class="fas fa-paper-plane"></i> Chiedi approvazione</button>' +
+          '</div>';
         }
       } else {
         body += '<div style="margin-top:10px;background:#dcfce7;color:#15803d;font-weight:700;padding:8px 14px;border-radius:6px;display:inline-block"><i class="fas fa-check-circle"></i> Approvazione automatica (' + currentUser.ruolo + ')</div>';

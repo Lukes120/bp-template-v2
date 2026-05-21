@@ -154,19 +154,27 @@ if ($method === 'POST') {
     $statoSc = $d['scontoStato'] ?? '';
     // "approvato" = autorizzato, "inattesa" = utente sta chiedendo approvazione adesso.
     // Entrambi bypassano le regole anti-sotto-soglia: senza questo bypass il flow di
-    // "Chiedi approvazione" fallirebbe (catch-22: per essere approvata serve salvarla,
-    // per salvarla serve approvazione). Bug 21/05/2026 v=63: utente Matteo perse
-    // un'offerta perche' il save veniva bloccato ma la mail di richiesta partiva lo stesso.
+    // "Chiedi approvazione" fallirebbe (catch-22). Vedi bug 21/05/2026 v=63 (Matteo).
     $scontoOk = in_array($statoSc, ['approvato', 'inattesa'], true);
     $piAttivo = !empty($d['prezzoImpostoAttivo']);
+    $cValid = bp_calc_all($d);
+    $margineOk = $cValid['mP'] >= $minMargine;
 
-    if ($piAttivo && !$scontoOk && $me['ruolo'] === 'user') {
-        bp_audit('validation_fail', 'offerte', $d['id'], 'PI attivo senza approvazione (ruolo user)', $me);
-        bp_json_out(['error' => 'Modalita\' prezzo imposto attiva: richiede approvazione supervisore prima del salvataggio. Chiedi approvazione oppure disattiva il toggle.'], 400);
+    // PI attivo + user: serve approvazione SOLO se margine sotto soglia. Se margine
+    // >= soglia ruolo, l'uso di PI non e' un rischio commerciale -> auto-OK senza
+    // approvazione. Decisione 21/05/2026 v=65 dopo caso Matteo (PI con margine alto
+    // veniva bloccato inutilmente). Regola precedente: blocco a prescindere dal margine.
+    if ($piAttivo && !$scontoOk && $me['ruolo'] === 'user' && !$margineOk) {
+        $msg = sprintf('PI attivo + margine %.2f%% < soglia %d%% (ruolo user)', $cValid['mP'], $minMargine);
+        bp_audit('validation_fail', 'offerte', $d['id'], $msg, $me);
+        $mpFmt = number_format($cValid['mP'], 1, ',', '.');
+        bp_json_out(['error' => "Prezzo imposto: margine {$mpFmt}% sotto soglia {$minMargine}%, richiede approvazione supervisore."], 400);
     }
 
-    $cValid = bp_calc_all($d);
-    if ($cValid['mP'] < $minMargine && !$scontoOk) {
+    // Regola margine generica per offerte SENZA PI (Sconto Direzione): blocca se margine
+    // sotto soglia e nessuna approvazione in flight. Per offerte CON PI la regola sopra
+    // copre gia' il caso, qui skippiamo per evitare doppio blocco con messaggi confusi.
+    if (!$margineOk && !$scontoOk && !$piAttivo) {
         $msg = sprintf('margine %.2f%% < soglia %d%% (ruolo %s)', $cValid['mP'], $minMargine, $me['ruolo']);
         bp_audit('validation_fail', 'offerte', $d['id'], $msg, $me);
         $mpFmt = number_format($cValid['mP'], 1, ',', '.');
