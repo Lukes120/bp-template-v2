@@ -453,6 +453,13 @@ async function salva(){
     return;
   }
 
+  // v=68: se PI attivo + margine OK + stato vuoto, marca scontoStato='approvato'
+  // (replica server api/offerte.php). Garantisce che il riepilogo subito dopo il
+  // save mostri la sezione PI come totale praticato, senza richiedere un reload.
+  if (form.prezzoImpostoAttivo && margineOk && !(form.scontoStato || "")) {
+    form.scontoStato = "approvato";
+  }
+
   form.userId = currentUser.id;
   form.userName = currentUser.nome;
   if (!editId) form.id = uid();

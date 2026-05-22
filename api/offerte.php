@@ -181,6 +181,22 @@ if ($method === 'POST') {
         bp_json_out(['error' => "Margine {$mpFmt}% sotto la soglia minima del {$minMargine}% per il tuo ruolo. Chiedi sconto direzione o rivedi costi/markup."], 400);
     }
 
+    // v=68: se PI attivo + margine OK + stato vuoto, marca scontoStato='approvato'
+    // automaticamente. Senza questo, bp_calc_all considera PI non-applicato (prezzoImpostoOk
+    // dipende da scontoStato==='approvato') e il riepilogo / lista / PDF mostrano il
+    // totale calcolato invece del PI praticato. Vedi bug Matteo 22/05/2026 mattina:
+    // offerta salvata con auto-approvazione v=65 ma riepilogo non mostrava sezione PI.
+    if ($piAttivo && $margineOk && $statoSc === '') {
+        $d['scontoStato'] = 'approvato';
+        bp_audit(
+            'pi_auto_approved',
+            'offerte',
+            $d['id'],
+            sprintf('PI auto-approvato (margine %.2f%% >= soglia %d%% ruolo %s)', $cValid['mP'], $minMargine, $me['ruolo']),
+            $actor
+        );
+    }
+
     bp_offerta_upsert($d, $actor);
     if ($om > 0) {
         bp_audit('overmarkup_set', 'offerte', $d['id'], "overmarkup=$om%", $actor);
