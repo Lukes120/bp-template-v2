@@ -432,11 +432,14 @@ async function salva(){
   const c = calcAll(form);
   const minMargine = MARGINE_MIN_RUOLO[currentUser.ruolo] ?? 0;
   const scontoApprovato = form.scontoStato === "approvato";
-  // Modalità prezzo imposto: per user, blocca il salvataggio finché non approvato.
-  if (form.prezzoImpostoAttivo && !scontoApprovato && currentUser.ruolo === "user") {
+  const margineOk = c.mP >= minMargine;
+  // Modalità prezzo imposto: per user, blocca il salvataggio SOLO se margine
+  // sotto soglia ruolo. Con margine OK il PI passa senza approvazione
+  // (replica regola server api/offerte.php:167, v=65 commit c7b4374).
+  if (form.prezzoImpostoAttivo && !scontoApprovato && currentUser.ruolo === "user" && !margineOk) {
     toast(
-      "Modalità prezzo imposto attiva: l'offerta richiede l'approvazione di un supervisore prima del salvataggio. " +
-      "Clicca \"Chiedi approvazione\" oppure disattiva il toggle.",
+      `Prezzo imposto: margine ${fmtPct(c.mP)}% sotto la soglia minima del ${minMargine}% per il tuo ruolo. ` +
+      `Clicca "Chiedi approvazione" per inviare la richiesta al supervisore.`,
       "error", 6000
     );
     return;
