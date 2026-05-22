@@ -752,6 +752,7 @@ function stripForm(){
     nome: form.nome || "", cliente: form.cliente || "", tipo: form.tipo || "",
     data: form.data || "", note: form.note || "", nOrdineOdoo: form.nOrdineOdoo || "",
     speseGenerali: form.speseGenerali || "5",
+    overmarkup: parseInt(form.overmarkup, 10) || 0,
     scontoStato: form.scontoStato || "", scontoTipo: form.scontoTipo || "pct", scontoValore: form.scontoValore || 0,
     prezzoImpostoAttivo: !!form.prezzoImpostoAttivo, prezzoImpostoValore: form.prezzoImpostoValore || 0,
     personale:    (form.personale || []).map(r => ({ categoria: r.categoria || "", oreG: r.oreG || 0, costoH: r.costoH || 0, markup: r.markup || 0 })),
