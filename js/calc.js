@@ -19,6 +19,17 @@ const MARGINE_MIN_RUOLO = {
   admin:       0,
 };
 
+// Soglie minime di markup % per ruolo "user", per sezione. User puo' alzare ma non
+// scendere sotto questi valori (sono i markup di default). Replica server-side in
+// core/calcoli.php (BP_MARKUP_MIN_USER). Per supervisore/admin nessun limite.
+const MARKUP_MIN_USER = {
+  personale:    35,
+  materiali:    25,
+  servizi:      20,
+  manutenzione: 25,
+  trasferte:    10,
+};
+
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 function pf(v){ return parseFloat(v) || 0; }
 function fmt(n){ return isNaN(n) || n === "" ? "0,00" : Number(n).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }

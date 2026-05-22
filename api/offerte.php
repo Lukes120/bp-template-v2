@@ -118,11 +118,19 @@ if ($method === 'POST') {
     $spese = (float)($d['speseGenerali'] ?? 0);
     if ($spese < 0 || $spese > 100) $errs[] = "Spese generali fuori range (0-100): $spese";
     $sezioni = ['personale', 'materiali', 'servizi', 'manutenzione', 'trasferte'];
+    $isUserRole = ($me['ruolo'] ?? '') === 'user';
     foreach ($sezioni as $sec) {
         if (empty($d[$sec]) || !is_array($d[$sec])) continue;
+        $sogliaMk = $isUserRole && isset(BP_MARKUP_MIN_USER[$sec]) ? BP_MARKUP_MIN_USER[$sec] : null;
         foreach ($d[$sec] as $i => $r) {
             $mk = (float)($r['markup'] ?? 0);
             if ($mk < 0 || $mk > 500) $errs[] = "Markup $sec[$i] fuori range (0-500): $mk";
+            // Anti-tampering: per ruolo "user" il markup di ogni sezione deve essere >= soglia.
+            // Server-side replica del clamp client in js/app.js bindEvents. Skip righe con
+            // markup=0 (placeholder/vuote: la riga di default ha sempre markup > 0).
+            if ($sogliaMk !== null && $mk > 0 && $mk < $sogliaMk) {
+                $errs[] = sprintf("Markup %s riga %d (%g%%) sotto soglia ruolo user (%d%%)", $sec, $i + 1, $mk, $sogliaMk);
+            }
             foreach (['oreG','costoH','qta','costoU','persone','giorni','costoGiorno','vitto','alloggio','km','costoKm'] as $fld) {
                 if (!isset($r[$fld]) || $r[$fld] === '') continue;
                 if ((float)$r[$fld] < 0) $errs[] = "$sec[$i].$fld negativo: " . $r[$fld];

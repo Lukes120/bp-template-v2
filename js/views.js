@@ -408,12 +408,16 @@ function renderForm(){
   const c = calcAll(form, true);
   const inp = (key, id, field, val, type, mw) => '<input type="' + (type || "text") + '" data-key="' + key + '" data-id="' + id + '" data-field="' + field + '" value="' + esc(val || "") + '" style="min-width:' + (mw || 60) + 'px">';
   const sel = (key, id, val) => '<select data-key="' + key + '" data-id="' + id + '" data-field="categoria" onchange="aggiornaCostoH(this)">' + Object.keys(CATEGORIE).map(cat => '<option' + (cat === val ? " selected" : "") + '>' + esc(cat) + '</option>').join("") + '</select>';
-  // Markup readonly per ruolo "user": solo admin/supervisore possono modificarlo.
+  // Markup per ruolo "user": editable ma con minimo = soglia di sezione (MARKUP_MIN_USER).
+  // L'attributo min HTML5 mostra l'indicatore browser; il clamp definitivo + toast
+  // sono in app.js bindEvents listener change. Anti-tampering server-side in
+  // api/offerte.php. Per supervisore/admin: nessun limite.
   const isUserRole = currentUser && currentUser.ruolo === "user";
   const inpMarkup = (key, id, val) => {
-    const ro = isUserRole ? ' readonly title="Solo supervisore o admin possono modificare il markup"' : '';
-    const cls = isUserRole ? ' class="markup-locked"' : '';
-    return '<input type="number"' + cls + ' data-key="' + key + '" data-id="' + id + '" data-field="markup" value="' + esc(val || "") + '"' + ro + ' style="min-width:45px">';
+    const soglia = isUserRole ? (MARKUP_MIN_USER[key] ?? 0) : 0;
+    const minAttr = isUserRole ? ' min="' + soglia + '"' : '';
+    const titleAttr = isUserRole ? ' title="Markup minimo ' + soglia + '% per il tuo ruolo (puoi solo aumentare)"' : '';
+    return '<input type="number" data-key="' + key + '" data-id="' + id + '" data-field="markup" value="' + esc(val || "") + '"' + minAttr + titleAttr + ' style="min-width:45px">';
   };
 
   const manRows = c.cp.map(r => '<tr><td data-label="Categoria">' + sel("personale", r.id, r.categoria) + '</td><td data-label="h/uomo">' + inp("personale", r.id, "oreG", r.oreG, "number", 50) + '</td><td data-label="Costo/h"><input type="number" data-key="personale" data-id="' + r.id + '" data-field="costoH" value="' + (r.costoH || CATEGORIE[r.categoria] || 0) + '" readonly style="min-width:65px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:3px 6px;font-size:.8rem;width:100%"></td><td data-label="Costo Tot." class="td-r">' + fmt(r.b) + '</td><td data-label="Markup %">' + inpMarkup("personale", r.id, r.markup) + '</td><td data-label="Prezzo Vendita" class="td-pv">' + fmt(r.pv) + '</td><td data-label="Margine" class="td-mg">' + fmt(r.pv - r.b) + '</td><td data-label=""><button class="del-btn" aria-label="Elimina riga" onclick="delRow(\'personale\',\'' + r.id + '\')">x</button></td></tr>').join("");

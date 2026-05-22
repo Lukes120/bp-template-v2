@@ -574,6 +574,25 @@ function bindEvents(){
     const sgEur = document.getElementById("sg-eur");
     if (sgEur) sgEur.textContent = "= EUR " + fmt(c.sg);
   });
+  // Clamp markup ruolo "user": al blur (change), se il valore digitato e' sotto la
+  // soglia di sezione (MARKUP_MIN_USER), riporta automaticamente alla soglia + toast.
+  // Replica server-side in api/offerte.php (anti-tampering). Per supervisore/admin: skip.
+  app.addEventListener("change", function(e){
+    const el = e.target.closest("[data-key][data-field='markup']");
+    if (!el) return;
+    if (!currentUser || currentUser.ruolo !== "user") return;
+    const key = el.dataset.key;
+    const soglia = MARKUP_MIN_USER[key];
+    if (soglia == null) return;
+    const val = parseFloat(el.value);
+    if (isNaN(val) || val >= soglia) return;
+    el.value = soglia;
+    if (form[key]) {
+      form[key] = form[key].map(r => r.id == el.dataset.id ? { ...r, markup: String(soglia) } : r);
+    }
+    toast(`Markup ${key} minimo ${soglia}% per il tuo ruolo. Riportato a ${soglia}%.`, "warn", 4000);
+    render();
+  });
 }
 
 /* ============== SCONTO ============== */

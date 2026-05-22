@@ -14,6 +14,17 @@
 const BP_MARGINE_GREEN  = 20;
 const BP_MARGINE_YELLOW = 10;
 
+// Soglie minime di markup % per ruolo "user", per sezione. Replica server-side della
+// costante MARKUP_MIN_USER in js/calc.js. User puo' alzare ma non scendere sotto.
+// Per supervisore/admin: nessun limite.
+const BP_MARKUP_MIN_USER = [
+    'personale'    => 35,
+    'materiali'    => 25,
+    'servizi'      => 20,
+    'manutenzione' => 25,
+    'trasferte'    => 10,
+];
+
 function bp_pf($v): float {
     return (float)($v ?? 0);
 }
