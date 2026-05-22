@@ -249,7 +249,10 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
     $sheet->mergeCells('A' . $r . ':H' . $r);
     $sheet->getStyle('A' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
     $sgCell = 'K' . $r;
-    $sheet->setCellValue($sgCell, '=' . $totV . '*(' . $sgPct . '/100)');
+    // Spese Generali: % sui COSTI (allineato a core/calcoli.php:72 e js/calc.js:50,
+    // dove sg = tC * speseGenerali/100). Bug pre-fix: usava $totV (vendite) -> totale
+    // Excel sempre divergente da UI/PDF.
+    $sheet->setCellValue($sgCell, '=' . $totC . '*(' . $sgPct . '/100)');
     $sheet->getStyle('A' . $r . ':L' . $r)->applyFromArray($rowAltStyle);
     $sheet->getStyle('A' . $r)->getFont()->setBold(true);
     $sheet->getStyle($sgCell)->getNumberFormat()->setFormatCode($numFmt);
@@ -276,22 +279,30 @@ function bp_xlsx_offerta(array $form, ?string $utente = null): string {
 
     $prezzoImpostoOk = !empty($form['prezzoImpostoAttivo']) && (($form['scontoStato'] ?? '') === 'approvato');
     $scontoApp = !$prezzoImpostoOk && ($form['scontoStato'] ?? '') === 'approvato' ? bp_pf($form['scontoValore'] ?? 0) : 0;
-    $tVSum = 0;
+    // tC/tV-Sum: replica della logica di core/calcoli.php (tC=somma costi, tVL=somma
+    // vendite). Servono entrambi qui: tVSum per overmarkup (su vendite), tCSum per
+    // spese generali (sui costi). Bug pre-fix: tFCalc usava sgPct*tVSum -> divergeva
+    // da UI/PDF.
+    $tVSum = 0; $tCSum = 0;
     foreach ($form['personale'] ?? [] as $rr) {
         $b = bp_pf($rr['oreG']) * bp_pf($rr['costoH']);
+        $tCSum += $b;
         $tVSum += $b * (1 + bp_pf($rr['markup']) / 100);
     }
     foreach (array_merge($form['materiali'] ?? [], $form['servizi'] ?? [], $form['manutenzione'] ?? []) as $rr) {
         $b = bp_pf($rr['qta']) * bp_pf($rr['costoU']);
+        $tCSum += $b;
         $tVSum += $b * (1 + bp_pf($rr['markup']) / 100);
     }
     foreach ($form['trasferte'] ?? [] as $rr) {
         $p = bp_pf($rr['persone']); $g = bp_pf($rr['giorni']);
         $b = bp_pf($rr['costoGiorno']) * $p * $g + bp_pf($rr['vitto']) * $p * $g + bp_pf($rr['alloggio']) * $p * $g + bp_pf($rr['km']) * bp_pf($rr['costoKm']);
+        $tCSum += $b;
         $tVSum += $b * (1 + bp_pf($rr['markup']) / 100);
     }
-    // tFCalc PHP-side (usato sotto per calcolare lo sconto direzione): include overmarkup.
-    $tFCalc = $tVSum * (1 + $overmarkup / 100) + $tVSum * ($sgPct / 100);
+    // tFCalc PHP-side (usato sotto per calcolare lo sconto direzione): include overmarkup
+    // su vendite e sg sui costi (allineato a core/calcoli.php:72-83).
+    $tFCalc = $tVSum * (1 + $overmarkup / 100) + $tCSum * ($sgPct / 100);
 
     // Sconto Direzione: solo se prezzo imposto NON attivo e c'è uno sconto effettivo
     if (!$prezzoImpostoOk && $scontoApp > 0) {
