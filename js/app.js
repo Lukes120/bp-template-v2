@@ -313,6 +313,35 @@ function setOvermarkup(sel){
   render();
 }
 
+// Repaint chirurgico per oninput dell'input "Prezzo Imposto valore" (card PI).
+// NON chiamiamo render() qui: ricreerebbe l'intero HTML del form incluso lo
+// stesso input -> focus perso dopo il primo carattere, l'utente non vede il
+// margine aggiornarsi mentre digita. Pattern simmetrico a bindEvents listener
+// input per le righe sezione.
+function setPiValore(input){
+  formDirty = true;
+  const piVal = parseFloat(input.value) || 0;
+  form.prezzoImpostoValore = piVal;
+  const c = calcAll(form, true);
+  const me = piVal - c.tC;
+  const mp = piVal > 0 ? (me / piVal) * 100 : 0;
+  // Card PI: margine % e EUR
+  const piMpEl = document.getElementById("pi-margine-pct");
+  if (piMpEl) {
+    piMpEl.textContent = fmtPct(mp) + "%";
+    piMpEl.className = mc(mp);
+  }
+  const piEurEl = document.getElementById("pi-margine-eur");
+  if (piEurEl) {
+    piEurEl.textContent = "(" + (me >= 0 ? '+' : '') + fmt(me) + " EUR)";
+  }
+  // Bottom-bar (coerenza globale: PI applicato via previewPI=true)
+  const bbMp = document.getElementById("bb-mp");
+  if (bbMp) { bbMp.textContent = fmtPct(c.mP) + "%"; bbMp.className = mc(c.mP); }
+  const bbTf = document.getElementById("bb-tfsconto");
+  if (bbTf) bbTf.textContent = "EUR " + fmt(c.tFSconto);
+}
+
 function syncAndGo(dest){ syncFormFromDOM(); screen = dest; render(); }
 
 function nuovaOfferta(){ form = emptyForm(); editId = null; formDirty = false; screen = "form"; render(); }

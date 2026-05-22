@@ -498,10 +498,10 @@ function renderForm(){
       const mPPreview = piVal > 0 ? (mePreview / piVal) * 100 : 0;
       let body = '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
         '<label style="font-size:.9rem;font-weight:600;color:#6b7280">Prezzo target finale (EUR):</label>' +
-        '<input type="number" id="prezzo-imposto-valore" step="0.01" min="0" value="' + piVal + '" oninput="syncFormFromDOM();form.prezzoImpostoValore=parseFloat(this.value)||0;render()" style="width:160px;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:1.05rem;font-weight:700">' +
+        '<input type="number" id="prezzo-imposto-valore" step="0.01" min="0" value="' + piVal + '" oninput="setPiValore(this)" style="width:160px;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:1.05rem;font-weight:700">' +
         '<span style="font-size:.85rem;color:#6b7280">Margine risultante:</span>' +
-        '<span class="' + mc(mPPreview) + '" style="font-size:1.1rem;font-weight:700">' + fmtPct(mPPreview) + '%</span>' +
-        '<span style="font-size:.82rem;color:#6b7280">(' + (mePreview >= 0 ? '+' : '') + fmt(mePreview) + ' EUR)</span>' +
+        '<span id="pi-margine-pct" class="' + mc(mPPreview) + '" style="font-size:1.1rem;font-weight:700">' + fmtPct(mPPreview) + '%</span>' +
+        '<span id="pi-margine-eur" style="font-size:.82rem;color:#6b7280">(' + (mePreview >= 0 ? '+' : '') + fmt(mePreview) + ' EUR)</span>' +
       '</div>';
       if (isUser) {
         // Soglia margine ruolo (parita' col server, vedi MARGINE_MIN_RUOLO in api/offerte.php)
