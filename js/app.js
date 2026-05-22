@@ -768,6 +768,7 @@ async function exportExcel(){
 
 function stripForm(){
   return {
+    id: form.id || null, userId: form.userId || (currentUser && currentUser.id) || null, userName: form.userName || (currentUser && currentUser.nome) || null,
     nome: form.nome || "", cliente: form.cliente || "", tipo: form.tipo || "",
     data: form.data || "", note: form.note || "", nOrdineOdoo: form.nOrdineOdoo || "",
     speseGenerali: form.speseGenerali || "5",
